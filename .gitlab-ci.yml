@@ -1,0 +1,50 @@
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $CI_COMMIT_BRANCH # execute a branch pipline when there isn't a merge request
+
+image: production.docker.adsrvr.org/ttd-pipeline/dotnet/core/sdk-8.0.100-dev-infra:1.1.0@sha256:06ddb48088a167687452b46382b28b139fbd9c3623f13a408088e8430a315321
+
+include:
+  - project: "thetradedesk/teams/devacc/TTD.DevInfra"
+    file: "GitlabShared/set-credentials.yml"
+
+variables:
+  APP: ttd-auction-server
+  AUCTION_SERVER_MAIN: ttd-auction-server-main
+
+stages:
+  - build
+
+build:
+  stage: build
+  services:
+    - name: proxy.docker.adsrvr.org/docker:27.3.1-dind@sha256:8d5039800a368057d99fc0a75167d80f345ac8650850509adc7fe25c64cba9dd
+      alias: docker
+  script:
+    - !reference [.set_credentials, before_script]
+    - |
+      if [[ "${CI_COMMIT_BRANCH}" == "${AUCTION_SERVER_MAIN}" ]]
+      then
+        export PUSH_DOCKER_REGISTRY=${DOCKER_PRODUCTION_REGISTRY}
+        export PUSH_DOCKER_USER=${DOCKER_PRODUCTION_USER}
+        export PUSH_DOCKER_PASSWORD=${DOCKER_PRODUCTION_PASS}
+      else
+        export PUSH_DOCKER_REGISTRY=${DOCKER_INTERNAL_REGISTRY}
+        export PUSH_DOCKER_USER=${DOCKER_INTERNAL_USER}
+        export PUSH_DOCKER_PASSWORD=${DOCKER_INTERNAL_PASS}
+      fi
+    - |
+      DEFAULT_IMAGE=${APP}:latest
+      until docker info; do sleep 1; done
+      docker login ${PUSH_DOCKER_REGISTRY} -u ${PUSH_DOCKER_USER} -p ${PUSH_DOCKER_PASSWORD}
+      docker build --platform linux/amd64 -t ${PUSH_DOCKER_REGISTRY}/${DEFAULT_IMAGE} .
+      docker push --all-tags ${PUSH_DOCKER_REGISTRY}/${APP}
+      docker logout ${PUSH_DOCKER_REGISTRY}
+  rules:
+    - if: '$CI_COMMIT_BRANCH != $AUCTION_SERVER_MAIN'
+      when: manual
+      allow_failure: true
+    - if: '$CI_COMMIT_BRANCH == $AUCTION_SERVER_MAIN'
+      when: always

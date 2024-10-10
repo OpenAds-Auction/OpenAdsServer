@@ -94,8 +94,9 @@ type Configuration struct {
 	GenerateRequestID bool                      `mapstructure:"generate_request_id"`
 	HostSChainNode    *openrtb2.SupplyChainNode `mapstructure:"host_schain_node"`
 	// Experiment configures non-production ready features.
-	Experiment Experiment `mapstructure:"experiment"`
-	DataCenter string     `mapstructure:"datacenter"`
+	Experiment            Experiment `mapstructure:"experiment"`
+	DataCenter            string     `mapstructure:"datacenter"`
+	BidderAllowList   []string `mapstructure:"bidder_allow_list"`
 	// BidderInfos supports adapter overrides in extra configs like pbs.json, pbs.yaml, etc.
 	// Refers to main.go `configFileName` constant
 	BidderInfos BidderInfos `mapstructure:"adapters"`
@@ -815,6 +816,24 @@ func New(v *viper.Viper, bidderInfos BidderInfos, normalizeBidderName openrtb_ex
 	}
 	c.BidderInfos = mergedBidderInfos
 
+	if c.BidderAllowList != nil && len(c.BidderAllowList) > 0 {
+		glog.Info("Filtering configured bidders based on allowlist.")
+		allowed := BidderInfos{}
+		for _, value := range c.BidderAllowList {
+			info, ok := c.BidderInfos[value]
+			if ok {
+				allowed[value] = info
+			} else {
+				glog.Warning("Bidder '" + value + "' not configured.")
+			}
+		}
+		c.BidderInfos = allowed
+	}
+
+	for bidderName := range c.BidderInfos {
+		setBidderDefaults(v, strings.ToLower(bidderName))
+	}
+
 	glog.Info("Logging the resolved configuration:")
 	logGeneral(reflect.ValueOf(c), "  \t")
 	if errs := c.validate(v); len(errs) > 0 {
@@ -912,6 +931,7 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("garbage_collector_threshold", 0)
 	v.SetDefault("status_response", "")
 	v.SetDefault("datacenter", "")
+	v.SetDefault("bidder_allow_list", nil)
 	v.SetDefault("auction_timeouts_ms.default", 0)
 	v.SetDefault("auction_timeouts_ms.max", 0)
 	v.SetDefault("cache.scheme", "")
