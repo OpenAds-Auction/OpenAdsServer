@@ -6,6 +6,13 @@ workflow:
 
 image: production.docker.adsrvr.org/ttd-pipeline/dotnet/core/sdk-8.0.100-dev-infra:1.1.0@sha256:06ddb48088a167687452b46382b28b139fbd9c3623f13a408088e8430a315321
 
+default:
+  id_tokens:
+    DEVINFRA_SERVITOR_ID_TOKEN:
+      aud: https://servitor.gen.adsrvr.org
+    DEVINFRA_VAULT_ID_TOKEN:
+      aud: https://vault.adsrvr.org
+
 include:
   - project: "thetradedesk/teams/devacc/TTD.DevInfra"
     file: "GitlabShared/set-credentials.yml"
