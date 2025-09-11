@@ -78,7 +78,7 @@ func executeGroup[H any, P any](
 		wg.Add(1)
 		go func(hw hooks.HookWrapper[H], moduleCtx hookstage.ModuleInvocationContext) {
 			defer wg.Done()
-			executeHook(moduleCtx, hw, newPayload, hookHandler, group.Timeout, group.RejectOnTimeout, resp, rejected)
+			executeHook(moduleCtx, hw, newPayload, hookHandler, group.Timeout, resp, rejected)
 		}(hook, mCtx)
 	}
 
@@ -98,7 +98,6 @@ func executeHook[H any, P any](
 	payload P,
 	hookHandler hookHandler[H, P],
 	timeout time.Duration,
-	rejectOnTimeout bool,
 	resp chan<- hookResponse[P],
 	rejected <-chan struct{},
 ) {
@@ -129,10 +128,6 @@ func executeHook[H any, P any](
 		res.ExecutionTime = time.Since(startTime)
 		resp <- res
 	case <-time.After(timeout):
-		result := hookstage.HookResult[P]{}
-		if rejectOnTimeout {
-			result.Reject = true
-		}
 		resp <- hookResponse[P]{
 			Err:           TimeoutError{},
 			ExecutionTime: time.Since(startTime),
