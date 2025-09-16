@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/prebid/prebid-server/v2/config"
+	"github.com/prebid/prebid-server/v3/config"
 )
 
 type namedSyncerConfig struct {
@@ -80,7 +80,7 @@ func BuildSyncers(hostConfig *config.Configuration, bidderInfos config.BidderInf
 }
 
 func shouldCreateSyncer(cfg config.BidderInfo) bool {
-	if cfg.Disabled {
+	if !cfg.IsEnabled() {
 		return false
 	}
 

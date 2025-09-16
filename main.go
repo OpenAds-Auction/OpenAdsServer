@@ -8,13 +8,13 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/prebid/prebid-server/v2/config"
-	"github.com/prebid/prebid-server/v2/currency"
-	"github.com/prebid/prebid-server/v2/openrtb_ext"
-	"github.com/prebid/prebid-server/v2/router"
-	"github.com/prebid/prebid-server/v2/server"
-	"github.com/prebid/prebid-server/v2/util/jsonutil"
-	"github.com/prebid/prebid-server/v2/util/task"
+	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/currency"
+	"github.com/prebid/prebid-server/v3/openrtb_ext"
+	"github.com/prebid/prebid-server/v3/router"
+	"github.com/prebid/prebid-server/v3/server"
+	"github.com/prebid/prebid-server/v3/util/jsonutil"
+	"github.com/prebid/prebid-server/v3/util/task"
 
 	"github.com/golang/glog"
 	"github.com/spf13/viper"
@@ -65,9 +65,10 @@ func loadConfig(bidderInfos config.BidderInfos) (*config.Configuration, error) {
 }
 
 func serve(cfg *config.Configuration) error {
+	httpTimeout := time.Duration(cfg.CurrencyConverter.FetchTimeoutMilliseconds) * time.Millisecond
 	fetchingInterval := time.Duration(cfg.CurrencyConverter.FetchIntervalSeconds) * time.Second
 	staleRatesThreshold := time.Duration(cfg.CurrencyConverter.StaleRatesSeconds) * time.Second
-	currencyConverter := currency.NewRateConverter(&http.Client{}, cfg.CurrencyConverter.FetchURL, staleRatesThreshold)
+	currencyConverter := currency.NewRateConverter(&http.Client{}, httpTimeout, cfg.CurrencyConverter.FetchURL, staleRatesThreshold)
 
 	currencyConverterTickerTask := task.NewTickerTask(fetchingInterval, currencyConverter)
 	currencyConverterTickerTask.Start()

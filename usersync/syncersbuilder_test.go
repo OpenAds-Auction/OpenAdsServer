@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/prebid/prebid-server/v2/config"
-	"github.com/prebid/prebid-server/v2/macros"
+	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/macros"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -267,6 +267,21 @@ func TestShouldCreateSyncer(t *testing.T) {
 		{
 			description: "Disabled, Syncer - Only SupportCORS",
 			given:       config.BidderInfo{Disabled: true, Syncer: &config.Syncer{SupportCORS: &anyCORS}},
+			expected:    false,
+		},
+		{
+			description: "WhiteLabelOnly, No Syncer",
+			given:       config.BidderInfo{WhiteLabelOnly: true, Syncer: nil},
+			expected:    false,
+		},
+		{
+			description: "WhiteLabelOnly, Syncer",
+			given:       config.BidderInfo{WhiteLabelOnly: true, Syncer: &config.Syncer{Key: "anyKey"}},
+			expected:    false,
+		},
+		{
+			description: "WhiteLabelOnly, Syncer - Fully Loaded",
+			given:       config.BidderInfo{WhiteLabelOnly: true, Syncer: &config.Syncer{Key: "anyKey", Supports: anySupports, IFrame: anyEndpoint, Redirect: anyEndpoint, SupportCORS: &anyCORS}},
 			expected:    false,
 		},
 	}
