@@ -15,10 +15,10 @@ import (
 	validator "github.com/asaskevich/govalidator"
 	"github.com/coocood/freecache"
 	"github.com/golang/glog"
-	"github.com/prebid/prebid-server/v2/config"
-	"github.com/prebid/prebid-server/v2/metrics"
-	"github.com/prebid/prebid-server/v2/openrtb_ext"
-	"github.com/prebid/prebid-server/v2/util/timeutil"
+	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/metrics"
+	"github.com/prebid/prebid-server/v3/openrtb_ext"
+	"github.com/prebid/prebid-server/v3/util/timeutil"
 )
 
 var refetchCheckInterval = 300
@@ -238,13 +238,13 @@ func (f *PriceFloorFetcher) fetchAndValidate(config config.AccountFloorFetch) (*
 	}
 
 	if len(floorResp) > (config.MaxFileSizeKB * 1024) {
-		glog.Errorf("Recieved invalid floor data from URL: %s, reason : floor file size is greater than MaxFileSize", config.URL)
+		glog.Errorf("Received invalid floor data from URL: %s, reason : floor file size is greater than MaxFileSize", config.URL)
 		return nil, 0
 	}
 
 	var priceFloors openrtb_ext.PriceFloorRules
 	if err = json.Unmarshal(floorResp, &priceFloors.Data); err != nil {
-		glog.Errorf("Recieved invalid price floor json from URL: %s", config.URL)
+		glog.Errorf("Received invalid price floor json from URL: %s", config.URL)
 		return nil, 0
 	}
 
@@ -271,6 +271,14 @@ func (f *PriceFloorFetcher) fetchFloorRulesFromURL(config config.AccountFloorFet
 	if err != nil {
 		return nil, 0, errors.New("error while getting response from url : " + err.Error())
 	}
+	defer func() {
+		// read the entire response body to ensure full connection reuse if there's an
+		// invalid status code
+		if _, err := io.Copy(io.Discard, httpResp.Body); err != nil {
+			glog.Errorf("error while draining fetched floor response body: %v", err)
+		}
+		httpResp.Body.Close()
+	}()
 
 	if httpResp.StatusCode != http.StatusOK {
 		return nil, 0, errors.New("no response from server")
@@ -291,7 +299,6 @@ func (f *PriceFloorFetcher) fetchFloorRulesFromURL(config config.AccountFloorFet
 	if err != nil {
 		return nil, 0, errors.New("unable to read response")
 	}
-	defer httpResp.Body.Close()
 
 	return respBody, maxAge, nil
 }
@@ -309,8 +316,8 @@ func validateRules(config config.AccountFloorFetch, priceFloors *openrtb_ext.Pri
 		return errors.New("skip rate should be greater than or equal to 0 and less than 100")
 	}
 
-	if priceFloors.Data.FetchRate != nil && (*priceFloors.Data.FetchRate < dataRateMin || *priceFloors.Data.FetchRate > dataRateMax) {
-		return errors.New("FetchRate should be greater than or equal to 0 and less than or equal to 100")
+	if priceFloors.Data.UseFetchDataRate != nil && (*priceFloors.Data.UseFetchDataRate < dataRateMin || *priceFloors.Data.UseFetchDataRate > dataRateMax) {
+		return errors.New("usefetchdatarate should be greater than or equal to 0 and less than or equal to 100")
 	}
 
 	for _, modelGroup := range priceFloors.Data.ModelGroups {

@@ -4,18 +4,22 @@ workflow:
       when: never
     - if: $CI_COMMIT_BRANCH # execute a branch pipline when there isn't a merge request
 
-image: production.docker.adsrvr.org/ttd-pipeline/dotnet/core/sdk-8.0.100-dev-infra:1.1.0@sha256:06ddb48088a167687452b46382b28b139fbd9c3623f13a408088e8430a315321
+image: docker.pkgs.adsrvr.org/ttd-pipeline-prod/ttd-pipeline/dotnet/core/sdk-8.0.301-dev-infra:1.2.7
 
 default:
   id_tokens:
-    DEVINFRA_SERVITOR_ID_TOKEN:
-      aud: https://servitor.gen.adsrvr.org
+    KUBEINFO_ID_TOKEN:
+      aud: kubeinfo.adsrvr.net
     DEVINFRA_VAULT_ID_TOKEN:
       aud: https://vault.adsrvr.org
+    SPIFFE_GITLAB_ID_TOKEN:
+      aud: https://spire.prod.adsrvr.net
 
 include:
-  - project: "thetradedesk/teams/devacc/TTD.DevInfra"
-    file: "GitlabShared/set-credentials.yml"
+  - project: thetradedesk/teams/devacc/TTD.DevInfra
+    file:
+      - GitlabShared/gitlab-ci-cloudsmith.yml
+    ref: master
 
 variables:
   APP: ttd-auction-server
@@ -27,28 +31,21 @@ stages:
 build:
   stage: build
   services:
-    - name: proxy.docker.adsrvr.org/docker:27.3.1-dind@sha256:8d5039800a368057d99fc0a75167d80f345ac8650850509adc7fe25c64cba9dd
+    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:28.3.3-dind@sha256:c0872aae4791ff427e6eda52769afa04f17b5cf756f8267e0d52774c99d5c9de
       alias: docker
   script:
-    - !reference [.set_credentials, before_script]
+    - !reference [.fetch-cloudsmith-token, script]
     - |
       if [[ "${CI_COMMIT_BRANCH}" == "${AUCTION_SERVER_MAIN}" ]]
       then
-        export PUSH_DOCKER_REGISTRY=${DOCKER_PRODUCTION_REGISTRY}
-        export PUSH_DOCKER_USER=${DOCKER_PRODUCTION_USER}
-        export PUSH_DOCKER_PASSWORD=${DOCKER_PRODUCTION_PASS}
+        export PUSH_DOCKER_REGISTRY=${DOCKER_PRODUCTION_CLOUDSMITH}
       else
-        export PUSH_DOCKER_REGISTRY=${DOCKER_INTERNAL_REGISTRY}
-        export PUSH_DOCKER_USER=${DOCKER_INTERNAL_USER}
-        export PUSH_DOCKER_PASSWORD=${DOCKER_INTERNAL_PASS}
+        export PUSH_DOCKER_REGISTRY=${DOCKER_DEV_CLOUDSMITH}
       fi
     - |
       DEFAULT_IMAGE=${APP}:latest
-      until docker info; do sleep 1; done
-      docker login ${PUSH_DOCKER_REGISTRY} -u ${PUSH_DOCKER_USER} -p ${PUSH_DOCKER_PASSWORD}
       docker build --platform linux/amd64 -t ${PUSH_DOCKER_REGISTRY}/${DEFAULT_IMAGE} .
       docker push --all-tags ${PUSH_DOCKER_REGISTRY}/${APP}
-      docker logout ${PUSH_DOCKER_REGISTRY}
   rules:
     - if: '$CI_COMMIT_BRANCH != $AUCTION_SERVER_MAIN'
       when: manual

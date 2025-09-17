@@ -4,15 +4,16 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
-	"github.com/prebid/prebid-server/v2/config"
-	"github.com/prebid/prebid-server/v2/server/ssl"
-	"github.com/prebid/prebid-server/v2/usersync"
+	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/server/ssl"
+	"github.com/prebid/prebid-server/v3/usersync"
 )
 
 // Recaptcha code from https://github.com/haisum/recaptcha/blob/master/recaptcha.go
@@ -45,7 +46,15 @@ func (deps *UserSyncDeps) VerifyRecaptcha(response string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		// read the entire response body to ensure full connection reuse if there's an
+		// error while decoding the json
+		if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+			glog.Errorf("Captcha verify draining response body failed: %v", err)
+		}
+		resp.Body.Close()
+	}()
+
 	var gr = googleResponse{}
 	if err := json.NewDecoder(resp.Body).Decode(&gr); err != nil {
 		return err

@@ -5,9 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/prebid/prebid-server/v2/hooks/hookstage"
-	"github.com/prebid/prebid-server/v2/openrtb_ext"
-	"github.com/prebid/prebid-server/v2/util/ptrutil"
+	"github.com/prebid/openrtb/v20/openrtb2"
+	"github.com/prebid/prebid-server/v3/hooks/hookstage"
+	"github.com/prebid/prebid-server/v3/openrtb_ext"
+	"github.com/prebid/prebid-server/v3/util/ptrutil"
 )
 
 type mockUpdateHeaderEntrypointHook struct{}
@@ -100,6 +101,10 @@ func (e mockRejectHook) HandleAuctionResponseHook(_ context.Context, _ hookstage
 	return hookstage.HookResult[hookstage.AuctionResponsePayload]{Reject: true}, nil
 }
 
+func (e mockRejectHook) HandleExitpointHook(_ context.Context, _ hookstage.ModuleInvocationContext, _ hookstage.ExitpointPaylaod) (hookstage.HookResult[hookstage.ExitpointPaylaod], error) {
+	return hookstage.HookResult[hookstage.ExitpointPaylaod]{Reject: true}, nil
+}
+
 type mockTimeoutHook struct{}
 
 func (e mockTimeoutHook) HandleEntrypointHook(_ context.Context, _ hookstage.ModuleInvocationContext, _ hookstage.EntrypointPayload) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
@@ -151,7 +156,7 @@ func (e mockTimeoutHook) HandleRawBidderResponseHook(_ context.Context, _ hookst
 	time.Sleep(20 * time.Millisecond)
 	c := hookstage.ChangeSet[hookstage.RawBidderResponsePayload]{}
 	c.AddMutation(func(payload hookstage.RawBidderResponsePayload) (hookstage.RawBidderResponsePayload, error) {
-		payload.Bids[0].BidMeta = &openrtb_ext.ExtBidPrebidMeta{AdapterCode: "new-code"}
+		payload.BidderResponse.Bids[0].BidMeta = &openrtb_ext.ExtBidPrebidMeta{AdapterCode: "new-code"}
 		return payload, nil
 	}, hookstage.MutationUpdate, "bidderResponse", "bidMeta.AdapterCode")
 
@@ -178,6 +183,17 @@ func (e mockTimeoutHook) HandleAuctionResponseHook(_ context.Context, _ hookstag
 	}, hookstage.MutationUpdate, "auctionResponse", "bidResponse.Ext")
 
 	return hookstage.HookResult[hookstage.AuctionResponsePayload]{ChangeSet: c}, nil
+}
+
+func (e mockTimeoutHook) HandleExitpointHook(_ context.Context, _ hookstage.ModuleInvocationContext, _ hookstage.ExitpointPaylaod) (hookstage.HookResult[hookstage.ExitpointPaylaod], error) {
+	time.Sleep(2 * time.Millisecond)
+	c := hookstage.ChangeSet[hookstage.ExitpointPaylaod]{}
+	c.AddMutation(func(payload hookstage.ExitpointPaylaod) (hookstage.ExitpointPaylaod, error) {
+		payload.Response = &openrtb2.BidResponse{ID: "another-id"}
+		return payload, nil
+	}, hookstage.MutationUpdate, "exitpoint", "bidResponse.id")
+
+	return hookstage.HookResult[hookstage.ExitpointPaylaod]{ChangeSet: c}, nil
 }
 
 type mockModuleContextHook struct {
@@ -219,6 +235,11 @@ func (e mockModuleContextHook) HandleAuctionResponseHook(_ context.Context, miCt
 	return hookstage.HookResult[hookstage.AuctionResponsePayload]{ModuleContext: miCtx.ModuleContext}, nil
 }
 
+func (e mockModuleContextHook) HandleExitpointHook(_ context.Context, miCtx hookstage.ModuleInvocationContext, _ hookstage.ExitpointPaylaod) (hookstage.HookResult[hookstage.ExitpointPaylaod], error) {
+	miCtx.ModuleContext = map[string]interface{}{e.key: e.val}
+	return hookstage.HookResult[hookstage.ExitpointPaylaod]{ModuleContext: miCtx.ModuleContext}, nil
+}
+
 type mockFailureHook struct{}
 
 func (h mockFailureHook) HandleEntrypointHook(_ context.Context, _ hookstage.ModuleInvocationContext, _ hookstage.EntrypointPayload) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
@@ -257,6 +278,10 @@ func (h mockErrorHook) HandleAllProcessedBidResponsesHook(_ context.Context, _ h
 
 func (h mockErrorHook) HandleAuctionResponseHook(_ context.Context, miCtx hookstage.ModuleInvocationContext, _ hookstage.AuctionResponsePayload) (hookstage.HookResult[hookstage.AuctionResponsePayload], error) {
 	return hookstage.HookResult[hookstage.AuctionResponsePayload]{}, errors.New("unexpected error")
+}
+
+func (h mockErrorHook) HandleExitpointHook(_ context.Context, miCtx hookstage.ModuleInvocationContext, _ hookstage.ExitpointPaylaod) (hookstage.HookResult[hookstage.ExitpointPaylaod], error) {
+	return hookstage.HookResult[hookstage.ExitpointPaylaod]{}, errors.New("unexpected error")
 }
 
 type mockFailedMutationHook struct{}
@@ -351,7 +376,7 @@ func (e mockUpdateBidderResponseHook) HandleRawBidderResponseHook(_ context.Cont
 	c := hookstage.ChangeSet[hookstage.RawBidderResponsePayload]{}
 	c.AddMutation(
 		func(payload hookstage.RawBidderResponsePayload) (hookstage.RawBidderResponsePayload, error) {
-			payload.Bids[0].DealPriority = 10
+			payload.BidderResponse.Bids[0].DealPriority = 10
 			return payload, nil
 		}, hookstage.MutationUpdate, "bidderResponse", "bid.deal-priority",
 	)
@@ -384,4 +409,32 @@ func (e mockUpdateBidResponseHook) HandleAuctionResponseHook(_ context.Context, 
 		}, hookstage.MutationUpdate, "auctionResponse", "bidResponse.custom-data")
 
 	return hookstage.HookResult[hookstage.AuctionResponsePayload]{ChangeSet: c}, nil
+}
+
+type mockUpdateResponseHook struct{}
+
+func (e mockUpdateResponseHook) HandleExitpointHook(_ context.Context, _ hookstage.ModuleInvocationContext, _ hookstage.ExitpointPaylaod) (hookstage.HookResult[hookstage.ExitpointPaylaod], error) {
+	c := hookstage.ChangeSet[hookstage.ExitpointPaylaod]{}
+	c.AddMutation(
+		func(payload hookstage.ExitpointPaylaod) (hookstage.ExitpointPaylaod, error) {
+			payload.Response = `<VAST version="2.0"/>`
+			payload.W.Header().Set("Content-Type", "application/xml")
+			return payload, nil
+		}, hookstage.MutationUpdate, "exitpoint", "bidResponse.custom-response")
+
+	return hookstage.HookResult[hookstage.ExitpointPaylaod]{ChangeSet: c}, nil
+}
+
+type mockUpdateResponseAgainHook struct{}
+
+func (e mockUpdateResponseAgainHook) HandleExitpointHook(_ context.Context, _ hookstage.ModuleInvocationContext, _ hookstage.ExitpointPaylaod) (hookstage.HookResult[hookstage.ExitpointPaylaod], error) {
+	c := hookstage.ChangeSet[hookstage.ExitpointPaylaod]{}
+	c.AddMutation(
+		func(payload hookstage.ExitpointPaylaod) (hookstage.ExitpointPaylaod, error) {
+			payload.Response = &openrtb2.BidResponse{ID: "modified-id"}
+			payload.W.Header().Set("Content-Type", "application/json")
+			return payload, nil
+		}, hookstage.MutationUpdate, "exitpoint", "bidResponse.json-response")
+
+	return hookstage.HookResult[hookstage.ExitpointPaylaod]{ChangeSet: c}, nil
 }

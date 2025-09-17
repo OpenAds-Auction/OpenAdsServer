@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prebid/prebid-server/v2/config"
-	"github.com/prebid/prebid-server/v2/metrics"
-	"github.com/prebid/prebid-server/v2/openrtb_ext"
+	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/metrics"
+	"github.com/prebid/prebid-server/v3/openrtb_ext"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
@@ -75,6 +75,8 @@ func TestConnectionMetrics(t *testing.T) {
 		expectedOpenedErrorCount float64
 		expectedClosedCount      float64
 		expectedClosedErrorCount float64
+		expectedConnectionWant   float64
+		expectedConnectionGot    float64
 	}{
 		{
 			description: "Open Success",
@@ -116,6 +118,20 @@ func TestConnectionMetrics(t *testing.T) {
 			expectedClosedCount:      0,
 			expectedClosedErrorCount: 1,
 		},
+		{
+			description: "connection-want",
+			testCase: func(m *Metrics) {
+				m.RecordConnectionWant()
+			},
+			expectedConnectionWant: 1,
+		},
+		{
+			description: "connection-got",
+			testCase: func(m *Metrics) {
+				m.RecordConnectionGot()
+			},
+			expectedConnectionGot: 1,
+		},
 	}
 
 	for _, test := range testCases {
@@ -135,17 +151,22 @@ func TestConnectionMetrics(t *testing.T) {
 			test.expectedClosedErrorCount, prometheus.Labels{
 				connectionErrorLabel: connectionCloseError,
 			})
+		assertCounterValue(t, test.description, "connectionWant", m.connectionWant,
+			test.expectedConnectionWant)
+		assertCounterValue(t, test.description, "connectionGot", m.connectionGot,
+			test.expectedConnectionGot)
 	}
 }
 
 func TestRequestMetric(t *testing.T) {
 	m := createMetricsForTesting()
 	requestType := metrics.ReqTypeORTB2Web
-	requestStatus := metrics.RequestStatusBlacklisted
+	requestStatus := metrics.RequestStatusBlockedApp
 
 	m.RecordRequest(metrics.Labels{
 		RType:         requestType,
 		RequestStatus: requestStatus,
+		RequestSize:   1024,
 	})
 
 	expectedCount := float64(1)
@@ -155,6 +176,9 @@ func TestRequestMetric(t *testing.T) {
 			requestTypeLabel:   string(requestType),
 			requestStatusLabel: string(requestStatus),
 		})
+
+	histogram := getHistogramFromHistogramVec(m.requestsSize, requestEndpointLabel, string(metrics.EndpointAuction))
+	assertHistogram(t, "requests_size_auction", histogram, 1, 1024)
 }
 
 func TestDebugRequestMetric(t *testing.T) {
@@ -285,7 +309,7 @@ func TestRequestMetricWithoutCookie(t *testing.T) {
 	performTest := func(m *Metrics, cookieFlag metrics.CookieFlag) {
 		m.RecordRequest(metrics.Labels{
 			RType:         requestType,
-			RequestStatus: metrics.RequestStatusBlacklisted,
+			RequestStatus: metrics.RequestStatusBlockedApp,
 			CookieFlag:    cookieFlag,
 		})
 	}
@@ -337,7 +361,7 @@ func TestAccountMetric(t *testing.T) {
 	performTest := func(m *Metrics, pubID string) {
 		m.RecordRequest(metrics.Labels{
 			RType:         metrics.ReqTypeORTB2Web,
-			RequestStatus: metrics.RequestStatusBlacklisted,
+			RequestStatus: metrics.RequestStatusBlockedApp,
 			PubID:         pubID,
 		})
 	}
@@ -1235,7 +1259,7 @@ func TestRecordSyncerRequestMetric(t *testing.T) {
 			label:  "already_synced",
 		},
 		{
-			status: metrics.SyncerCookieSyncTypeNotSupported,
+			status: metrics.SyncerCookieSyncRejectedByFilter,
 			label:  "type_not_supported",
 		},
 	}
@@ -1893,6 +1917,14 @@ func TestStoredResponsesMetric(t *testing.T) {
 		assertCounterVecValue(t, "", "account stored responses", m.accountStoredResponses, test.expectedAccountStoredResponsesCount, prometheus.Labels{accountLabel: "acct-id"})
 		assertCounterValue(t, "", "stored responses", m.storedResponses, test.expectedStoredResponsesCount)
 	}
+}
+
+func TestRecordGvlListRequest(t *testing.T) {
+	m := createMetricsForTesting()
+
+	m.RecordGvlListRequest()
+
+	assertCounterValue(t, "Record instance of fetched GVL list", "success", m.gvlListRequests, 1.00)
 }
 
 func TestRecordAdsCertReqMetric(t *testing.T) {

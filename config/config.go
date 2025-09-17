@@ -12,9 +12,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/prebid/go-gdpr/consentconstants"
 	"github.com/prebid/openrtb/v20/openrtb2"
-	"github.com/prebid/prebid-server/v2/errortypes"
-	"github.com/prebid/prebid-server/v2/openrtb_ext"
-	"github.com/prebid/prebid-server/v2/util/jsonutil"
+	"github.com/prebid/prebid-server/v3/errortypes"
+	"github.com/prebid/prebid-server/v3/openrtb_ext"
+	"github.com/prebid/prebid-server/v3/util/jsonutil"
 	"github.com/spf13/viper"
 )
 
@@ -39,6 +39,7 @@ type Configuration struct {
 	StatusResponse    string          `mapstructure:"status_response"`
 	AuctionTimeouts   AuctionTimeouts `mapstructure:"auction_timeouts_ms"`
 	TmaxAdjustments   TmaxAdjustments `mapstructure:"tmax_adjustments"`
+	TmaxDefault       int             `mapstructure:"tmax_default"`
 	CacheURL          Cache           `mapstructure:"cache"`
 	ExtCacheURL       ExternalCache   `mapstructure:"external_cache"`
 	RecaptchaSecret   string          `mapstructure:"recaptcha_secret"`
@@ -68,9 +69,9 @@ type Configuration struct {
 
 	VideoStoredRequestRequired bool `mapstructure:"video_stored_request_required"`
 
-	// Array of blacklisted apps that is used to create the hash table BlacklistedAppMap so App.ID's can be instantly accessed.
-	BlacklistedApps   []string `mapstructure:"blacklisted_apps,flow"`
-	BlacklistedAppMap map[string]bool
+	// Array of blocked apps that is used to create the hash table BlockedAppsLookup so App.ID's can be instantly accessed.
+	BlockedApps       []string `mapstructure:"blocked_apps,flow"`
+	BlockedAppsLookup map[string]bool
 	// Is publisher/account ID required to be submitted in the OpenRTB2 request
 	AccountRequired bool `mapstructure:"account_required"`
 	// AccountDefaults defines default settings for valid accounts that are partially defined
@@ -125,10 +126,24 @@ type PriceFloorFetcher struct {
 const MIN_COOKIE_SIZE_BYTES = 500
 
 type HTTPClient struct {
-	MaxConnsPerHost     int `mapstructure:"max_connections_per_host"`
-	MaxIdleConns        int `mapstructure:"max_idle_connections"`
-	MaxIdleConnsPerHost int `mapstructure:"max_idle_connections_per_host"`
-	IdleConnTimeout     int `mapstructure:"idle_connection_timeout_seconds"`
+	MaxConnsPerHost     int          `mapstructure:"max_connections_per_host"`
+	MaxIdleConns        int          `mapstructure:"max_idle_connections"`
+	MaxIdleConnsPerHost int          `mapstructure:"max_idle_connections_per_host"`
+	IdleConnTimeout     int          `mapstructure:"idle_connection_timeout_seconds"`
+	Throttle            HTTPThrottle `mapstructure:"throttle"`
+}
+
+type HTTPThrottle struct {
+	// Enables bidder throttling
+	EnableThrottling bool `mapstructure:"enable_throttling"`
+	// If enabled, we will only log that the bidder was to be throttled, but not actually throttle it.
+	SimulateThrottlingOnly bool `mapstructure:"simulate_throttling_only"`
+	// Queue wait time that is considered unhealthy
+	LongQueueWaitThresholdMS int `mapstructure:"long_queue_wait_threshold_ms"`
+	// Queue wait time that is short enough to be considered a healthy signal
+	ShortQueueWaitThresholdMS int `mapstructure:"short_queue_wait_threshold_ms"`
+	// ThrottleWindow controls the speed that the throttling logic will react to changes in the health of the bidder.
+	ThrottleWindow int `mapstructure:"throttle_window"`
 }
 
 func (cfg *Configuration) validate(v *viper.Viper) []error {
@@ -458,14 +473,18 @@ type Analytics struct {
 }
 
 type CurrencyConverter struct {
-	FetchURL             string `mapstructure:"fetch_url"`
-	FetchIntervalSeconds int    `mapstructure:"fetch_interval_seconds"`
-	StaleRatesSeconds    int    `mapstructure:"stale_rates_seconds"`
+	FetchURL                 string `mapstructure:"fetch_url"`
+	FetchTimeoutMilliseconds int    `mapstructure:"fetch_timeout_ms"`
+	FetchIntervalSeconds     int    `mapstructure:"fetch_interval_seconds"`
+	StaleRatesSeconds        int    `mapstructure:"stale_rates_seconds"`
 }
 
 func (cfg *CurrencyConverter) validate(errs []error) []error {
 	if cfg.FetchIntervalSeconds < 0 {
 		errs = append(errs, fmt.Errorf("currency_converter.fetch_interval_seconds must be in the range [0, %d]. Got %d", 0xffff, cfg.FetchIntervalSeconds))
+	}
+	if cfg.FetchTimeoutMilliseconds < 0 {
+		errs = append(errs, fmt.Errorf("currency_converter.fetch_timeout_ms must be 0 or greater. Got %d", cfg.FetchTimeoutMilliseconds))
 	}
 	return errs
 }
@@ -717,7 +736,7 @@ func (cfg *TimeoutNotification) validate(errs []error) []error {
 // New uses viper to get our server configurations.
 func New(v *viper.Viper, bidderInfos BidderInfos, normalizeBidderName openrtb_ext.BidderNameNormalizer) (*Configuration, error) {
 	var c Configuration
-	if err := v.Unmarshal(&c); err != nil {
+	if err := v.Unmarshal(&c, viper.DecodeHook(AccountModulesHookFunc())); err != nil {
 		return nil, fmt.Errorf("viper failed to unmarshal app config: %v", err)
 	}
 
@@ -797,10 +816,10 @@ func New(v *viper.Viper, bidderInfos BidderInfos, normalizeBidderName openrtb_ex
 	}
 
 	// To look for a request's app_id in O(1) time, we fill this hash table located in the
-	// the BlacklistedApps field of the Configuration struct defined in this file
-	c.BlacklistedAppMap = make(map[string]bool)
-	for i := 0; i < len(c.BlacklistedApps); i++ {
-		c.BlacklistedAppMap[c.BlacklistedApps[i]] = true
+	// the BlockedApps field of the Configuration struct defined in this file
+	c.BlockedAppsLookup = make(map[string]bool)
+	for i := 0; i < len(c.BlockedApps); i++ {
+		c.BlockedAppsLookup[c.BlockedApps[i]] = true
 	}
 
 	// Migrate combo stored request config to separate stored_reqs and amp stored_reqs configs.
@@ -964,6 +983,11 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("http_client.max_idle_connections", 400)
 	v.SetDefault("http_client.max_idle_connections_per_host", 10)
 	v.SetDefault("http_client.idle_connection_timeout_seconds", 60)
+	v.SetDefault("http_client.throttle.enable_throttling", false)
+	v.SetDefault("http_client.throttle.simulate_throttling_only", false)
+	v.SetDefault("http_client.throttle.long_queue_wait_threshold_ms", 50)
+	v.SetDefault("http_client.throttle.short_queue_wait_threshold_ms", 10)
+	v.SetDefault("http_client.throttle.throttle_window", 1000)
 	v.SetDefault("http_client_cache.max_connections_per_host", 0) // unlimited
 	v.SetDefault("http_client_cache.max_idle_connections", 10)
 	v.SetDefault("http_client_cache.max_idle_connections_per_host", 2)
@@ -1014,6 +1038,7 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("stored_requests.directorypath", "./stored_requests/data/by_id")
 	v.SetDefault("stored_requests.http.endpoint", "")
 	v.SetDefault("stored_requests.http.amp_endpoint", "")
+	v.SetDefault("stored_requests.http.use_rfc3986_compliant_request_builder", false)
 	v.SetDefault("stored_requests.in_memory_cache.type", "none")
 	v.SetDefault("stored_requests.in_memory_cache.ttl_seconds", 0)
 	v.SetDefault("stored_requests.in_memory_cache.request_cache_size_bytes", 0)
@@ -1101,7 +1126,16 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 
 	v.SetDefault("accounts.filesystem.enabled", false)
 	v.SetDefault("accounts.filesystem.directorypath", "./stored_requests/data/by_id")
+	v.SetDefault("accounts.http.endpoint", "")
+	v.SetDefault("accounts.http.use_rfc3986_compliant_request_builder", false)
 	v.SetDefault("accounts.in_memory_cache.type", "none")
+	v.SetDefault("accounts.in_memory_cache.ttl_seconds", 0)
+	v.SetDefault("accounts.in_memory_cache.size_bytes", 0)
+	v.SetDefault("accounts.cache_events.enabled", false)
+	v.SetDefault("accounts.cache_events.endpoint", "")
+	v.SetDefault("accounts.http_events.endpoint", "")
+	v.SetDefault("accounts.http_events.refresh_rate_seconds", 0)
+	v.SetDefault("accounts.http_events.timeout_ms", 0)
 
 	v.BindEnv("user_sync.external_url")
 	v.BindEnv("user_sync.coop_sync.default")
@@ -1163,13 +1197,13 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("ccpa.enforce", false)
 	v.SetDefault("lmt.enforce", true)
 	v.SetDefault("currency_converter.fetch_url", "https://cdn.jsdelivr.net/gh/prebid/currency-file@1/latest.json")
+	v.SetDefault("currency_converter.fetch_timeout_ms", 60000)      // 60 seconds
 	v.SetDefault("currency_converter.fetch_interval_seconds", 1800) // fetch currency rates every 30 minutes
 	v.SetDefault("currency_converter.stale_rates_seconds", 0)
 	v.SetDefault("default_request.type", "")
 	v.SetDefault("default_request.file.name", "")
 	v.SetDefault("default_request.alias_info", false)
-	v.SetDefault("blacklisted_apps", []string{""})
-	v.SetDefault("blacklisted_accts", []string{""})
+	v.SetDefault("blocked_apps", []string{""})
 	v.SetDefault("account_required", false)
 	v.SetDefault("account_defaults.disabled", false)
 	v.SetDefault("account_defaults.debug_allow", true)
@@ -1229,6 +1263,8 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("tmax_adjustments.bidder_response_duration_min_ms", 0)
 	v.SetDefault("tmax_adjustments.bidder_network_latency_buffer_ms", 0)
 	v.SetDefault("tmax_adjustments.pbs_response_preparation_duration_ms", 0)
+
+	v.SetDefault("tmax_default", 0)
 
 	/* IPv4
 	/*  Site Local: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
