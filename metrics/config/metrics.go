@@ -384,6 +384,7 @@ func (me *MultiMetricsEngine) RecordAdapterThrottled(adapter openrtb_ext.BidderN
 	}
 }
 
+<<<<<<< HEAD
 func (me *MultiMetricsEngine) RecordConnectionWant() {
 	for _, thisME := range *me {
 		thisME.RecordConnectionWant()
@@ -420,6 +421,8 @@ func (me *MultiMetricsEngine) RecordAuctionAuditActiveFilters(count int) {
 	}
 }
 
+=======
+>>>>>>> 17a06b6a (Revert "Metrics: Record HTTP connections wanted and obtained (#4518)" (#4538))
 // NilMetricsEngine implements the MetricsEngine interface where no metrics are actually captured. This is
 // used if no metric backend is configured and also for tests.
 type NilMetricsEngine struct{}
@@ -602,6 +605,7 @@ func (me *NilMetricsEngine) RecordModuleTimeout(labels metrics.ModuleLabels) {
 // RecordAdapterThrottled as a noop
 func (me *NilMetricsEngine) RecordAdapterThrottled(adapter openrtb_ext.BidderName) {
 }
+<<<<<<< HEAD
 
 func (me *NilMetricsEngine) RecordConnectionWant() {
 }
@@ -620,3 +624,5 @@ func (me *NilMetricsEngine) RecordAuctionAuditError(reason metrics.AuctionAuditE
 
 func (me *NilMetricsEngine) RecordAuctionAuditActiveFilters(count int) {
 }
+=======
+>>>>>>> 17a06b6a (Revert "Metrics: Record HTTP connections wanted and obtained (#4518)" (#4538))
