@@ -585,10 +585,13 @@ type MetricsEngine interface {
 	RecordModuleExecutionError(labels ModuleLabels)
 	RecordModuleTimeout(labels ModuleLabels)
 	RecordAdapterThrottled(adapterName openrtb_ext.BidderName)
+<<<<<<< HEAD
 	RecordConnectionWant()
 	RecordConnectionGot()
 	RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus)
 	RecordAuctionAudit(action AuctionAuditAction, account string)
 	RecordAuctionAuditError(reason AuctionAuditErrorReason)
 	RecordAuctionAuditActiveFilters(count int)
+=======
+>>>>>>> 17a06b6a (Revert "Metrics: Record HTTP connections wanted and obtained (#4518)" (#4538))
 }

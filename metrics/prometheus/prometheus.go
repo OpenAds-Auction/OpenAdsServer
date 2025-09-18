@@ -23,8 +23,6 @@ type Metrics struct {
 	connectionsClosed            prometheus.Counter
 	connectionsError             *prometheus.CounterVec
 	connectionsOpened            prometheus.Counter
-	connectionWant               prometheus.Counter
-	connectionGot                prometheus.Counter
 	cookieSync                   *prometheus.CounterVec
 	setUid                       *prometheus.CounterVec
 	impressions                  *prometheus.CounterVec
@@ -201,14 +199,6 @@ func NewMetrics(cfg config.PrometheusMetrics, disabledMetrics config.DisabledMet
 	metrics.connectionsOpened = newCounterWithoutLabels(cfg, reg,
 		"connections_opened",
 		"Count of successful connections opened to Prebid Server.")
-
-	metrics.connectionWant = newCounterWithoutLabels(cfg, reg,
-		"connections_want",
-		"Count number of times client trace calls GetConn.")
-
-	metrics.connectionGot = newCounterWithoutLabels(cfg, reg,
-		"connections_got",
-		"Count number of times client trace calls GotConn.")
 
 	metrics.tmaxTimeout = newCounterWithoutLabels(cfg, reg,
 		"tmax_timeout",
@@ -1176,6 +1166,7 @@ func (m *Metrics) RecordAdapterThrottled(adapterName openrtb_ext.BidderName) {
 		adapterLabel: strings.ToLower(string(adapterName)),
 	}).Inc()
 }
+<<<<<<< HEAD
 
 func (m *Metrics) RecordConnectionWant() {
 	m.connectionWant.Inc()
@@ -1208,3 +1199,5 @@ func (m *Metrics) RecordAuctionAuditError(reason metrics.AuctionAuditErrorReason
 func (m *Metrics) RecordAuctionAuditActiveFilters(count int) {
 	m.auctionAuditActiveFilters.Set(float64(count))
 }
+=======
+>>>>>>> 17a06b6a (Revert "Metrics: Record HTTP connections wanted and obtained (#4518)" (#4538))
