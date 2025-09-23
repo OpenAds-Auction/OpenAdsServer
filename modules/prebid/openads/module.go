@@ -3,10 +3,12 @@ package openads
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/prebid/prebid-server/v3/hooks/hookexecution"
 	"github.com/prebid/prebid-server/v3/hooks/hookstage"
 	"github.com/prebid/prebid-server/v3/modules/moduledeps"
+	"github.com/tidwall/sjson"
 )
 
 func Builder(rawConfig json.RawMessage, _ moduledeps.ModuleDeps) (interface{}, error) {
@@ -31,29 +33,24 @@ func (m Module) HandleBidderRequestHook(
 		return result, hookexecution.NewFailure("payload contains a nil bid request")
 	}
 
-	reqExt, err := payload.Request.GetRequestExt()
+	// Create ext if it doesn't exist
+	var extBytes []byte
+	if payload.Request.BidRequest.Ext != nil {
+		extBytes = payload.Request.BidRequest.Ext
+	} else {
+		extBytes = []byte("{}")
+	}
+
+	newExt, err := sjson.SetBytes(extBytes, "openads", 1)
 	if err != nil {
-		return result, hookexecution.NewFailure("failed to get request ext: %s", err)
+		return hookstage.HookResult[hookstage.BidderRequestPayload]{},
+			fmt.Errorf("failed to set openads field: %w", err)
 	}
 
-	extMap := reqExt.GetExt()
-	if extMap == nil {
-		extMap = make(map[string]json.RawMessage)
-	}
-
-	openAdsStruct := OpenAdsExt{OpenAds: 1}
-	openAdsBytes, err := json.Marshal(openAdsStruct)
-	if err != nil {
-		return result, hookexecution.NewFailure("failed to marshal openads: %s", err)
-	}
-
-	var tempMap map[string]json.RawMessage
-	if err := json.Unmarshal(openAdsBytes, &tempMap); err != nil {
-		return result, hookexecution.NewFailure("failed to unmarshal openads: %s", err)
-	}
-	extMap["openads"] = tempMap["openads"]
-
-	reqExt.SetExt(extMap)
+	result.ChangeSet.AddMutation(func(payload hookstage.BidderRequestPayload) (hookstage.BidderRequestPayload, error) {
+		payload.Request.BidRequest.Ext = newExt
+		return payload, nil
+	}, hookstage.MutationUpdate, "bidrequest", "ext.openads")
 
 	return result, nil
 }
