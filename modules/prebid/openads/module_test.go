@@ -15,22 +15,29 @@ import (
 func TestHandleBidderRequestHook(t *testing.T) {
 	tests := []struct {
 		name          string
-		initialExt    map[string]json.RawMessage
-		expectedValue string
+		initialExt    json.RawMessage
+		expectedValue int
 		expectError   bool
 	}{
 		{
-			name:          "add openads to empty ext",
+			name:          "add openads to nil ext",
 			initialExt:    nil,
-			expectedValue: "1",
+			expectedValue: 1,
 		},
 		{
-			name: "add openads to existing ext",
-			initialExt: map[string]json.RawMessage{
-				"prebid":  json.RawMessage(`{"debug": true}`),
-				"openads": json.RawMessage(`1`),
-			},
-			expectedValue: "1",
+			name:          "add openads to empty ext",
+			initialExt:    json.RawMessage(`{}`),
+			expectedValue: 1,
+		},
+		{
+			name:          "add openads to existing ext",
+			initialExt:    json.RawMessage(`{"prebid": {"debug": true}}`),
+			expectedValue: 1,
+		},
+		{
+			name:          "overwrite existing openads field",
+			initialExt:    json.RawMessage(`{"openads": 0,"prebid": {"debug": true}}`),
+			expectedValue: 1,
 		},
 	}
 
@@ -43,20 +50,17 @@ func TestHandleBidderRequestHook(t *testing.T) {
 				Imp: []openrtb2.Imp{
 					{ID: "test-imp"},
 				},
+				Ext: tt.initialExt,
 			}
 
 			requestWrapper := &openrtb_ext.RequestWrapper{BidRequest: bidRequest}
-			if tt.initialExt != nil {
-				reqExt, _ := requestWrapper.GetRequestExt()
-				reqExt.SetExt(tt.initialExt)
-			}
 
 			payload := hookstage.BidderRequestPayload{
 				Request: requestWrapper,
 				Bidder:  "testbidder",
 			}
 
-			_, err := module.HandleBidderRequestHook(
+			result, err := module.HandleBidderRequestHook(
 				context.Background(),
 				hookstage.ModuleInvocationContext{},
 				payload,
@@ -69,22 +73,42 @@ func TestHandleBidderRequestHook(t *testing.T) {
 
 			require.NoError(t, err)
 
-			// Verify openads was added
-			reqExt, err := requestWrapper.GetRequestExt()
+			// Apply the mutations to get the final result
+			finalPayload := payload
+			for _, mutation := range result.ChangeSet.Mutations() {
+				finalPayload, err = mutation.Apply(finalPayload)
+				require.NoError(t, err)
+			}
+
+			// Verify openads field was added/updated
+			var extMap map[string]interface{}
+			err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
 			require.NoError(t, err)
 
-			extMap := reqExt.GetExt()
-			require.NotNil(t, extMap)
+			openValue, exists := extMap["openads"]
+			require.True(t, exists, "open field should exist")
 
-			openadsValue, exists := extMap["openads"]
-			require.True(t, exists, "openads field should exist")
-			assert.Equal(t, tt.expectedValue, string(openadsValue))
+			switch v := openValue.(type) {
+			case int:
+				assert.Equal(t, tt.expectedValue, v)
+			case float64:
+				assert.Equal(t, float64(tt.expectedValue), v)
+			default:
+				t.Errorf("expected open to be int or float64, got %T", v)
+			}
 
-			// Verify existing fields are preserved
-			for key, expectedValue := range tt.initialExt {
-				actualValue, exists := extMap[key]
-				assert.True(t, exists, "existing field %s should be preserved", key)
-				assert.Equal(t, string(expectedValue), string(actualValue))
+			// Verify other fields are preserved if they existed
+			if len(tt.initialExt) > 2 {
+				var originalExt map[string]interface{}
+				json.Unmarshal(tt.initialExt, &originalExt)
+
+				for key, expectedValue := range originalExt {
+					if key != "openads" {
+						actualValue, exists := extMap[key]
+						assert.True(t, exists, "existing field %s should be preserved", key)
+						assert.Equal(t, expectedValue, actualValue)
+					}
+				}
 			}
 		})
 	}
@@ -106,4 +130,45 @@ func TestHandleBidderRequestHook_NilRequest(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "payload contains a nil bid request")
+}
+
+func TestHandleBidderRequestHook_MutationTracking(t *testing.T) {
+	module := Module{}
+
+	bidRequest := &openrtb2.BidRequest{
+		ID:  "test-request",
+		Ext: json.RawMessage(`{"existing": "value"}`),
+	}
+
+	requestWrapper := &openrtb_ext.RequestWrapper{BidRequest: bidRequest}
+
+	payload := hookstage.BidderRequestPayload{
+		Request: requestWrapper,
+		Bidder:  "testbidder",
+	}
+
+	result, err := module.HandleBidderRequestHook(
+		context.Background(),
+		hookstage.ModuleInvocationContext{},
+		payload,
+	)
+
+	require.NoError(t, err)
+
+	// Verify mutation was added
+	mutations := result.ChangeSet.Mutations()
+	assert.Len(t, mutations, 1)
+
+	mutation := mutations[0]
+	modifiedPayload, err := mutation.Apply(payload)
+	require.NoError(t, err)
+
+	// Verify the mutation actually worked
+	var extMap map[string]interface{}
+	err = json.Unmarshal(modifiedPayload.Request.BidRequest.Ext, &extMap)
+	require.NoError(t, err)
+
+	value, exists := extMap["openads"]
+	assert.True(t, exists)
+	assert.Equal(t, float64(1), value)
 }

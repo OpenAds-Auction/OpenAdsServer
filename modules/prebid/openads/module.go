@@ -17,10 +17,6 @@ func Builder(rawConfig json.RawMessage, _ moduledeps.ModuleDeps) (interface{}, e
 
 type Module struct{}
 
-type OpenAdsExt struct {
-	OpenAds int `json:"openads"`
-}
-
 // Utilize bid request hook to add ext.openads to all outgoing requests
 func (m Module) HandleBidderRequestHook(
 	_ context.Context,
