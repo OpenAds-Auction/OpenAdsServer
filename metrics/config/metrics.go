@@ -384,6 +384,7 @@ func (me *MultiMetricsEngine) RecordAdapterThrottled(adapter openrtb_ext.BidderN
 	}
 }
 
+<<<<<<< HEAD
 func (me *MultiMetricsEngine) RecordConnectionWant() {
 	for _, thisME := range *me {
 		thisME.RecordConnectionWant()
@@ -417,6 +418,17 @@ func (me *MultiMetricsEngine) RecordAuctionAuditError(reason metrics.AuctionAudi
 func (me *MultiMetricsEngine) RecordAuctionAuditActiveFilters(count int) {
 	for _, thisME := range *me {
 		thisME.RecordAuctionAuditActiveFilters(count)
+=======
+func (me *MultiMetricsEngine) RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName) {
+	for _, thisME := range *me {
+		thisME.RecordAdapterConnectionDialError(adapterName)
+	}
+}
+
+func (me *MultiMetricsEngine) RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration) {
+	for _, thisME := range *me {
+		thisME.RecordAdapterConnectionDialTime(adapterName, dialStartTime)
+>>>>>>> 6a9b4b29 (Metrics: Add connection dial metrics by adapter (#4528))
 	}
 }
 
@@ -603,6 +615,7 @@ func (me *NilMetricsEngine) RecordModuleTimeout(labels metrics.ModuleLabels) {
 func (me *NilMetricsEngine) RecordAdapterThrottled(adapter openrtb_ext.BidderName) {
 }
 
+<<<<<<< HEAD
 func (me *NilMetricsEngine) RecordConnectionWant() {
 }
 
@@ -619,4 +632,10 @@ func (me *NilMetricsEngine) RecordAuctionAuditError(reason metrics.AuctionAuditE
 }
 
 func (me *NilMetricsEngine) RecordAuctionAuditActiveFilters(count int) {
+=======
+func (me *NilMetricsEngine) RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName) {
+}
+
+func (me *NilMetricsEngine) RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration) {
+>>>>>>> 6a9b4b29 (Metrics: Add connection dial metrics by adapter (#4528))
 }
