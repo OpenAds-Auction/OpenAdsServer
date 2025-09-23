@@ -27,7 +27,8 @@ func TestHandleBidderRequestHook(t *testing.T) {
 		{
 			name: "add openads to existing ext",
 			initialExt: map[string]json.RawMessage{
-				"prebid": json.RawMessage(`{"debug": true}`),
+				"prebid":  json.RawMessage(`{"debug": true}`),
+				"openads": json.RawMessage(`1`),
 			},
 			expectedValue: "1",
 		},
@@ -35,10 +36,8 @@ func TestHandleBidderRequestHook(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create module
 			module := Module{}
 
-			// Create test request
 			bidRequest := &openrtb2.BidRequest{
 				ID: "test-request",
 				Imp: []openrtb2.Imp{
@@ -46,20 +45,17 @@ func TestHandleBidderRequestHook(t *testing.T) {
 				},
 			}
 
-			// Set up request wrapper with initial ext
 			requestWrapper := &openrtb_ext.RequestWrapper{BidRequest: bidRequest}
 			if tt.initialExt != nil {
 				reqExt, _ := requestWrapper.GetRequestExt()
 				reqExt.SetExt(tt.initialExt)
 			}
 
-			// Create payload
 			payload := hookstage.BidderRequestPayload{
 				Request: requestWrapper,
 				Bidder:  "testbidder",
 			}
 
-			// Execute hook
 			_, err := module.HandleBidderRequestHook(
 				context.Background(),
 				hookstage.ModuleInvocationContext{},
@@ -72,7 +68,6 @@ func TestHandleBidderRequestHook(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			// The payload should be modified in place, so we can check the original
 
 			// Verify openads was added
 			reqExt, err := requestWrapper.GetRequestExt()

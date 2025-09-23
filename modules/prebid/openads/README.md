@@ -6,4 +6,21 @@ The OpenAds module is a Prebid Server hook that automatically adds `ext.openads 
 
 ## Usage
 
-The module works automatically when the Prebid Server binary includes it. No configuration required!
+```yaml
+hooks:
+  enabled: true
+  modules:
+    prebid:
+      openads:
+        enabled: true
+  host_execution_plan:
+    endpoints:
+      "/openrtb2/auction":
+        stages:
+          bidder_request:
+            groups:
+              - timeout: 10
+                hook_sequence:
+                  - module_code: "prebid.openads"
+                    hook_impl_code: "prebid-openads-bidder-request-hook"
+```
