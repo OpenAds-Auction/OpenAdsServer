@@ -585,10 +585,15 @@ type MetricsEngine interface {
 	RecordModuleExecutionError(labels ModuleLabels)
 	RecordModuleTimeout(labels ModuleLabels)
 	RecordAdapterThrottled(adapterName openrtb_ext.BidderName)
+<<<<<<< HEAD
 	RecordConnectionWant()
 	RecordConnectionGot()
 	RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus)
 	RecordAuctionAudit(action AuctionAuditAction, account string)
 	RecordAuctionAuditError(reason AuctionAuditErrorReason)
 	RecordAuctionAuditActiveFilters(count int)
+=======
+	RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName)
+	RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration)
+>>>>>>> 6a9b4b29 (Metrics: Add connection dial metrics by adapter (#4528))
 }
