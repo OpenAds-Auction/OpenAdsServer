@@ -184,6 +184,19 @@ func preloadLabelValues(m *Metrics, syncerKeys []string, moduleStageNames map[st
 		preloadLabelValuesForHistogram(m.adapterConnectionWaitTime, map[string][]string{
 			adapterLabel: adapterValues,
 		})
+<<<<<<< HEAD
+=======
+
+		if !m.metricsDisabled.AdapterConnectionDialMetrics {
+			preloadLabelValuesForCounter(m.adapterConnectionDialErrors, map[string][]string{
+				adapterLabel: adapterValues,
+			})
+
+			preloadLabelValuesForHistogram(m.adapterConnectionDialTime, map[string][]string{
+				adapterLabel: adapterValues,
+			})
+		}
+>>>>>>> 5a668fad (Fix: Preload Prometheus adapter connection dial metric labels when enabled (#4543))
 	}
 
 	preloadLabelValuesForHistogram(m.adapterRequestsTimer, map[string][]string{
