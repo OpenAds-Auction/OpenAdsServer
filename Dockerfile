@@ -13,8 +13,9 @@ ENV PATH=$GOROOT/bin:$PATH
 ENV GOPROXY="https://proxy.golang.org"
 
 # Installing gcc as cgo uses it to build native code of some modules
+# Also installing openssl for cryptographic signature generation
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git gcc build-essential && \
+    apt-get install -y --no-install-recommends git gcc build-essential openssl && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # CGO must be enabled because some modules depend on native C code
@@ -24,7 +25,32 @@ RUN go mod tidy
 RUN go mod vendor
 ARG TEST="true"
 RUN if [ "$TEST" != "false" ]; then ./validate.sh ; fi
-RUN go build -mod=vendor -ldflags "-X github.com/prebid/prebid-server/v3/version.Ver=`git describe --tags | sed 's/^v//'` -X github.com/prebid/prebid-server/v3/version.Rev=`git rev-parse HEAD`" .
+# Generate cryptographic signature for build attestation
+RUN COMMIT_HASH=$(git rev-parse HEAD) && \
+    TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
+    echo "Generating build signature for commit: $COMMIT_HASH at $TIMESTAMP" && \
+    openssl genrsa -out build_key.pem 2048 && \
+    openssl rsa -in build_key.pem -pubout -out build_key.pub && \
+    PAYLOAD="${COMMIT_HASH}:${TIMESTAMP}:prebid-server-build" && \
+    echo "Signing payload: $PAYLOAD" && \
+    echo -n "$PAYLOAD" | openssl dgst -sha256 -sign build_key.pem -out signature.bin && \
+    SIGNATURE=$(base64 -w 0 signature.bin) && \
+    echo "=== BUILD ATTESTATION PUBLIC KEY ===" && \
+    cat build_key.pub && \
+    echo "=== END PUBLIC KEY ===" && \
+    echo "=== BUILD SIGNATURE (BASE64) ===" && \
+    echo "$SIGNATURE" && \
+    echo "=== END SIGNATURE ===" && \
+    echo "=== SIGNATURE PAYLOAD (PLAINTEXT) ===" && \
+    echo "$PAYLOAD" && \
+    echo "=== END PAYLOAD ===" && \
+    echo "=== VERIFICATION INFO ===" && \
+    echo "Git Commit: $COMMIT_HASH" && \
+    echo "Build Timestamp: $TIMESTAMP" && \
+    echo "Payload Format: <commit-hash>:<timestamp>:prebid-server-build" && \
+    echo "=== END VERIFICATION INFO ===" && \
+    rm -f build_key.pem signature.bin && \
+    go build -mod=vendor -ldflags "-X github.com/prebid/prebid-server/v3/version.Ver=`git describe --tags | sed 's/^v//'` -X github.com/prebid/prebid-server/v3/version.Rev=`git rev-parse HEAD` -X github.com/prebid/prebid-server/v3/version.BuildSignature=${SIGNATURE} -X github.com/prebid/prebid-server/v3/version.BuildTimestamp=${TIMESTAMP}" .
 
 FROM ubuntu:22.04 AS release
 LABEL maintainer="hans.hjort@xandr.com" 

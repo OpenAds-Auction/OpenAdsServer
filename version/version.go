@@ -19,3 +19,19 @@ const VerUnknown = "unknown"
 // Populated automatically at build / releases in the Docker image
 // See issue #559
 var Rev string
+
+// BuildSignature holds the build signature string
+// Populated using:
+//
+//	go build -ldflags "-X github.com/prebid/prebid-server/version.BuildSignature=<signature-value>"
+//
+// Used for build attestation and verification
+var BuildSignature string
+
+// BuildTimestamp holds the build timestamp string
+// Populated using:
+//
+//	go build -ldflags "-X github.com/prebid/prebid-server/version.BuildTimestamp=<timestamp-value>"
+//
+// Used for build attestation and verification
+var BuildTimestamp string
