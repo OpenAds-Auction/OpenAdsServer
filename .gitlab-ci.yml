@@ -44,8 +44,54 @@ build:
       fi
     - |
       DEFAULT_IMAGE=${APP}:latest
-      docker build --platform linux/amd64 -t ${PUSH_DOCKER_REGISTRY}/${DEFAULT_IMAGE} .
+      # Build and capture output to extract public key
+      docker build --platform linux/amd64 -t ${PUSH_DOCKER_REGISTRY}/${DEFAULT_IMAGE} . 2>&1 | tee build.log
+      
+      # Extract public key from build output
+      mkdir -p artifacts
+      awk '/=== BUILD ATTESTATION PUBLIC KEY ===/,/=== END PUBLIC KEY ===/' build.log | \
+        grep -v "=== BUILD ATTESTATION PUBLIC KEY ===" | \
+        grep -v "=== END PUBLIC KEY ===" > artifacts/build_key.pub
+      
+      # Extract signature and payload for completeness
+      awk '/=== BUILD SIGNATURE \(BASE64\) ===/,/=== END SIGNATURE ===/' build.log | \
+        grep -v "=== BUILD SIGNATURE (BASE64) ===" | \
+        grep -v "=== END SIGNATURE ===" > artifacts/build_signature.txt
+      
+      awk '/=== SIGNATURE PAYLOAD \(PLAINTEXT\) ===/,/=== END PAYLOAD ===/' build.log | \
+        grep -v "=== SIGNATURE PAYLOAD (PLAINTEXT) ===" | \
+        grep -v "=== END PAYLOAD ===" > artifacts/build_payload.txt
+      
+      # Extract verification info
+      awk '/=== VERIFICATION INFO ===/,/=== END VERIFICATION INFO ===/' build.log | \
+        grep -v "=== VERIFICATION INFO ===" | \
+        grep -v "=== END VERIFICATION INFO ===" > artifacts/verification_info.txt
+      
+      # Create a comprehensive attestation file
+      PUBLIC_KEY=$(cat artifacts/build_key.pub | tr -d '\n' | sed 's/"/\\"/g')
+      SIGNATURE=$(cat artifacts/build_signature.txt | tr -d '\n')
+      PAYLOAD=$(cat artifacts/build_payload.txt | tr -d '\n')
+      VERIFICATION_INFO=$(cat artifacts/verification_info.txt | tr -d '\n')
+      COMMIT_HASH=$(git rev-parse HEAD)
+      BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      
+      cat > artifacts/build_attestation.json << EOF
+      {
+        "public_key": "${PUBLIC_KEY}",
+        "signature": "${SIGNATURE}",
+        "payload": "${PAYLOAD}",
+        "verification_info": "${VERIFICATION_INFO}",
+        "commit_hash": "${COMMIT_HASH}",
+        "build_timestamp": "${BUILD_TIMESTAMP}"
+      }
+      EOF
+      
       docker push --all-tags ${PUSH_DOCKER_REGISTRY}/${APP}
+  artifacts:
+    name: "build-attestation-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - artifacts/
+    expire_in: 30 days
   rules:
     - if: '$CI_COMMIT_BRANCH != $AUCTION_SERVER_MAIN'
       when: manual

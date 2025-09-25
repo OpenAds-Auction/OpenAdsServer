@@ -265,6 +265,7 @@ func New(cfg *config.Configuration, rateConvertor *currency.RateConverter) (r *R
 	r.GET("/status", endpoints.NewStatusEndpoint(cfg.StatusResponse))
 	r.GET("/", serveIndex)
 	r.Handler("GET", "/version", endpoints.NewVersionEndpoint(version.Ver, version.Rev))
+	r.Handler("GET", "/attestation", endpoints.NewAttestationEndpoint())
 	r.ServeFiles("/static/*filepath", http.Dir("static"))
 
 	// vtrack endpoint
