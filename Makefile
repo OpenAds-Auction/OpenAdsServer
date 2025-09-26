@@ -6,7 +6,10 @@ all: deps test build-modules build
 
 # deps will clean out the vendor directory and use go mod for a fresh install
 deps:
-	GOPROXY="https://proxy.golang.org" go mod vendor -v && go mod tidy -v
+	GOPROXY="https://proxy.golang.org" GOSUMDB="sum.golang.org" go mod download && \
+	go mod verify && \
+	go mod vendor -v && \
+	go mod tidy -v
 	
 # test will ensure that all of our dependencies are available and run validate.sh
 test: deps
@@ -24,7 +27,7 @@ build-modules:
 
 # build will ensure all of our tests pass and then build the go binary
 build: test
-	go build -mod=vendor ./...
+	go build -mod=vendor -trimpath -buildmode=pie ./...
 
 # image will build a docker image
 image:

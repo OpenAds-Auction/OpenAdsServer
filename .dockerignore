@@ -1,0 +1,56 @@
+# Git and version control (keep .git for build attestation)
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Development files
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build artifacts and temporary files
+*.tmp
+*.temp
+build/
+dist/
+*.log
+
+# Test files and coverage
+coverage/
+*.test
+test-results/
+
+# CI/CD files (keep only what's needed for build)
+.gitlab-ci.yml
+.github/
+
+# Local development files
+docker-compose.yml
+docker-compose.*.yml
+sample/
+
+# Vendor directory (will be created during build)
+vendor/
+
+# Module generation artifacts (will be regenerated)
+modules/builder.go
