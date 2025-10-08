@@ -49,8 +49,8 @@ func prepareAttestationEndpointResponse() (json.RawMessage, error) {
 	}
 
 	if buildSignature != attestationEndpointValueNotSet && revision != versionEndpointValueNotSet && buildTimestamp != attestationEndpointValueNotSet {
-		// Create the actual payload that was signed: <commit-hash>:<timestamp>:prebid-server-build
-		signaturePayload = fmt.Sprintf("%s:%s:prebid-server-build", revision, buildTimestamp)
+		// Create the actual payload that was signed: <commit-hash>:<timestamp>:openads-server-build
+		signaturePayload = fmt.Sprintf("%s:%s:openads-server-build", revision, buildTimestamp)
 	}
 
 	return jsonutil.Marshal(struct {
@@ -64,6 +64,6 @@ func prepareAttestationEndpointResponse() (json.RawMessage, error) {
 		Version:          versionStr,
 		Revision:         revision,
 		SignaturePayload: signaturePayload,
-		PayloadFormat:    "<commit-hash>:<timestamp>:prebid-server-build",
+		PayloadFormat:    "<commit-hash>:<timestamp>:openads-server-build",
 	})
 }

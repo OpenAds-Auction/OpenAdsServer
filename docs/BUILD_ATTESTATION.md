@@ -11,7 +11,7 @@ prebid-server includes cryptographic build attestation through the `/attestation
 During Docker build, the following cryptographic signature generation occurs:
 
 1. **Generate RSA Key Pair**: A 2048-bit RSA key pair is generated
-2. **Create Payload**: Payload format: `<git-commit-hash>:<iso-timestamp>:prebid-server-build`
+2. **Create Payload**: Payload format: `<git-commit-hash>:<iso-timestamp>:openads-server-build`
 3. **Sign Payload**: The payload is signed using RSA-SHA256
 4. **Encode Signature**: The signature is base64-encoded
 5. **Inject Signature**: The signature is injected into the binary via ldflags
@@ -21,12 +21,12 @@ During Docker build, the following cryptographic signature generation occurs:
 ### Signature Payload Structure
 
 ```
-<git-commit-hash>:<iso-timestamp>:prebid-server-build
+<git-commit-hash>:<iso-timestamp>:openads-server-build
 ```
 
 **Example:**
 ```
-2272ad2a76b687fbfede6e81229cf9709598405b:2025-09-23T20:24:30Z:prebid-server-build
+2272ad2a76b687fbfede6e81229cf9709598405b:2025-09-23T20:24:30Z:openads-server-build
 ```
 
 ## Endpoint Usage
@@ -93,7 +93,7 @@ EOF
 
 # Recreate payload (timestamp from build output)
 TIMESTAMP="2025-09-23T20:24:30Z"
-PAYLOAD="${REVISION}:${TIMESTAMP}:prebid-server-build"
+PAYLOAD="${REVISION}:${TIMESTAMP}:openads-server-build"
 
 # Decode signature
 echo "$SIGNATURE" | base64 -d > signature.bin
@@ -129,12 +129,12 @@ FQIDAQAB
 sSjU5XQRNPnyzL74ongQuhpw+zS0mNP1u2AIlFuvOo9BYzu7QtN973ZnSQ0yD198K7omlCAg1rcJYPeDEcVHRQF/mwtaHsxFPJ9It3boMmszZYI+Jx9yjbdu74cBaZWWYjEkg09kp0GETdVcTCgQIlmdCgspdNPELyIzXRJWTQjhXvU0sxTlyQTg5vRZbQxHOC8tiFG2v2g/H+1vOjXZvAPE/+giKNWSMC1klBAAtKXhfEVyaiFiNjFnDKxXy3MjKyML8MGJitFn3yqeEbtPOulUJF92dswLtCYG5UwDkXRH4TgJdVnuJtSTWOdPJPSG4G0TIsZgiMkBQI2qkPOxig==
 === END SIGNATURE ===
 === SIGNATURE PAYLOAD (PLAINTEXT) ===
-2272ad2a76b687fbfede6e81229cf9709598405b:2025-09-23T20:37:53Z:prebid-server-build
+2272ad2a76b687fbfede6e81229cf9709598405b:2025-09-23T20:37:53Z:openads-server-build
 === END PAYLOAD ===
 === VERIFICATION INFO ===
 Git Commit: 2272ad2a76b687fbfede6e81229cf9709598405b
 Build Timestamp: 2025-09-23T20:37:53Z
-Payload Format: <commit-hash>:<timestamp>:prebid-server-build
+Payload Format: <commit-hash>:<timestamp>:openads-server-build
 === END VERIFICATION INFO ===
 ```
 

@@ -55,7 +55,7 @@ RUN COMMIT_HASH=$(git rev-parse HEAD) && \
     echo "Generating build signature for commit: $COMMIT_HASH at $TIMESTAMP" && \
     openssl genrsa -out build_key.pem 2048 && \
     openssl rsa -in build_key.pem -pubout -out build_key.pub && \
-    PAYLOAD="${COMMIT_HASH}:${TIMESTAMP}:prebid-server-build" && \
+    PAYLOAD="${COMMIT_HASH}:${TIMESTAMP}:openads-server-build" && \
     echo "Signing payload: $PAYLOAD" && \
     echo -n "$PAYLOAD" | openssl dgst -sha256 -sign build_key.pem -out signature.bin && \
     SIGNATURE=$(base64 -w 0 signature.bin) && \
@@ -71,7 +71,7 @@ RUN COMMIT_HASH=$(git rev-parse HEAD) && \
     echo "=== VERIFICATION INFO ===" && \
     echo "Git Commit: $COMMIT_HASH" && \
     echo "Build Timestamp: $TIMESTAMP" && \
-    echo "Payload Format: <commit-hash>:<timestamp>:prebid-server-build" && \
+    echo "Payload Format: <commit-hash>:<timestamp>:openads-server-build" && \
     echo "=== END VERIFICATION INFO ===" && \
     rm -f build_key.pem signature.bin && \
     go build \
