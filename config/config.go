@@ -470,6 +470,7 @@ type Analytics struct {
 	File     FileLogs      `mapstructure:"file"`
 	Agma     AgmaAnalytics `mapstructure:"agma"`
 	Pubstack Pubstack      `mapstructure:"pubstack"`
+	S3       S3Analytics   `mapstructure:"s3"`
 }
 
 type CurrencyConverter struct {
@@ -530,6 +531,22 @@ type Pubstack struct {
 type PubstackBuffer struct {
 	BufferSize string `mapstructure:"size"`
 	EventCount int    `mapstructure:"count"`
+	Timeout    string `mapstructure:"timeout"`
+}
+
+type S3Analytics struct {
+	Enabled       bool              `mapstructure:"enabled"`
+	Bucket        string            `mapstructure:"bucket"`
+	Prefix        string            `mapstructure:"prefix"`
+	Environment   string            `mapstructure:"environment"`
+	Region        string            `mapstructure:"region"`
+	Buffers       S3AnalyticsBuffer `mapstructure:"buffers"`
+	FallbackDir   string            `mapstructure:"fallback_dir"`
+	UploadTimeout string            `mapstructure:"upload_timeout"`
+}
+
+type S3AnalyticsBuffer struct {
+	BufferSize string `mapstructure:"size"`
 	Timeout    string `mapstructure:"timeout"`
 }
 
@@ -1161,6 +1178,11 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("analytics.agma.buffers.count", 100)
 	v.SetDefault("analytics.agma.buffers.timeout", "15m")
 	v.SetDefault("analytics.agma.accounts", []AgmaAnalyticsAccount{})
+	v.SetDefault("analytics.s3.enabled", false)
+	v.SetDefault("analytics.s3.environment", "prod")
+	v.SetDefault("analytics.s3.buffers.size", "10MB")
+	v.SetDefault("analytics.s3.buffers.timeout", "15m")
+	v.SetDefault("analytics.s3.upload_timeout", "2s")
 	v.SetDefault("amp_timeout_adjustment_ms", 0)
 	v.BindEnv("gdpr.default_value")
 	v.SetDefault("gdpr.enabled", true)

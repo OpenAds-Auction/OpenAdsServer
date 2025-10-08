@@ -10,14 +10,16 @@ import (
 	"github.com/prebid/prebid-server/v3/analytics/clients"
 	"github.com/prebid/prebid-server/v3/analytics/filesystem"
 	"github.com/prebid/prebid-server/v3/analytics/pubstack"
+	"github.com/prebid/prebid-server/v3/analytics/s3"
 	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/metrics"
 	"github.com/prebid/prebid-server/v3/openrtb_ext"
 	"github.com/prebid/prebid-server/v3/ortb"
 	"github.com/prebid/prebid-server/v3/privacy"
 )
 
 // Modules that need to be logged to need to be initialized here
-func New(analytics *config.Analytics) analytics.Runner {
+func New(analytics *config.Analytics, metricsEngine metrics.MetricsEngine) analytics.Runner {
 	modules := make(enabledAnalytics, 0)
 	if len(analytics.File.Filename) > 0 {
 		if mod, err := filesystem.NewFileLogger(analytics.File.Filename); err == nil {
@@ -53,6 +55,20 @@ func New(analytics *config.Analytics) analytics.Runner {
 			modules["agma"] = agmaModule
 		} else {
 			glog.Errorf("Could not initialize Agma Anayltics: %v", err)
+		}
+	}
+
+	if analytics.S3.Enabled {
+		s3Client, err := s3.NewS3Client(analytics.S3)
+		if err != nil {
+			glog.Errorf("Could not create S3 client: %v", err)
+		} else {
+			s3Module, err := s3.NewModule(analytics.S3, s3Client, clock.New(), metricsEngine)
+			if err == nil {
+				modules["s3"] = s3Module
+			} else {
+				glog.Errorf("Could not initialize S3 Analytics: %v", err)
+			}
 		}
 	}
 

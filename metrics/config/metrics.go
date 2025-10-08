@@ -396,6 +396,12 @@ func (me *MultiMetricsEngine) RecordConnectionGot() {
 	}
 }
 
+func (me *MultiMetricsEngine) RecordS3Analytics(destination metrics.AnalyticsDestination, status metrics.S3UploadStatus) {
+	for _, thisME := range *me {
+		thisME.RecordS3Analytics(destination, status)
+	}
+}
+
 // NilMetricsEngine implements the MetricsEngine interface where no metrics are actually captured. This is
 // used if no metric backend is configured and also for tests.
 type NilMetricsEngine struct{}
@@ -583,4 +589,7 @@ func (me *NilMetricsEngine) RecordConnectionWant() {
 }
 
 func (me *NilMetricsEngine) RecordConnectionGot() {
+}
+
+func (me *NilMetricsEngine) RecordS3Analytics(destination metrics.AnalyticsDestination, status metrics.S3UploadStatus) {
 }

@@ -105,6 +105,9 @@ type Metrics struct {
 	moduleExecutionErrors map[string]*prometheus.CounterVec
 	moduleTimeouts        map[string]*prometheus.CounterVec
 
+	// S3 Analytics Metrics
+	analyticsS3Upload *prometheus.CounterVec
+
 	metricsDisabled config.DisabledMetrics
 }
 
@@ -117,6 +120,7 @@ const (
 	cacheResultLabel     = "cache_result"
 	connectionErrorLabel = "connection_error"
 	cookieLabel          = "cookie"
+	destinationLabel     = "destination"
 	hasBidsLabel         = "has_bids"
 	isAudioLabel         = "audio"
 	isBannerLabel        = "banner"
@@ -533,6 +537,11 @@ func NewMetrics(cfg config.PrometheusMetrics, disabledMetrics config.DisabledMet
 		"ads_cert_requests",
 		"Count of AdsCert request, and if they were successfully sent.",
 		[]string{successLabel})
+
+	metrics.analyticsS3Upload = newCounter(cfg, reg,
+		"analytics_s3_upload_total",
+		"Count of S3 analytics uploads labeled by destination and status.",
+		[]string{destinationLabel, statusLabel})
 
 	createModulesMetrics(cfg, reg, &metrics, moduleStageNames, standardTimeBuckets)
 
@@ -1142,4 +1151,11 @@ func (m *Metrics) RecordConnectionWant() {
 
 func (m *Metrics) RecordConnectionGot() {
 	m.connectionGot.Inc()
+}
+
+func (m *Metrics) RecordS3Analytics(destination metrics.AnalyticsDestination, status metrics.S3UploadStatus) {
+	m.analyticsS3Upload.With(prometheus.Labels{
+		destinationLabel: string(destination),
+		statusLabel:      string(status),
+	}).Inc()
 }
