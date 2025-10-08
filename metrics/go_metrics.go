@@ -83,6 +83,13 @@ type Metrics struct {
 	AdsCertRequestsFailure metrics.Meter
 	adsCertSignTimer       metrics.Timer
 
+	// S3 Analytics metrics
+	S3AnalyticsS3Success    metrics.Meter
+	S3AnalyticsS3Timeout    metrics.Meter
+	S3AnalyticsS3Failure    metrics.Meter
+	S3AnalyticsLocalSuccess metrics.Meter
+	S3AnalyticsLocalFailure metrics.Meter
+
 	// Module metrics
 	ModuleMetrics map[string]map[string]*ModuleMetrics
 
@@ -212,6 +219,12 @@ func NewBlankMetrics(registry metrics.Registry, exchanges []string, disabledMetr
 		AdsCertRequestsSuccess: blankMeter,
 		AdsCertRequestsFailure: blankMeter,
 		adsCertSignTimer:       blankTimer,
+
+		S3AnalyticsS3Success:    blankMeter,
+		S3AnalyticsS3Timeout:    blankMeter,
+		S3AnalyticsS3Failure:    blankMeter,
+		S3AnalyticsLocalSuccess: blankMeter,
+		S3AnalyticsLocalFailure: blankMeter,
 
 		ModuleMetrics: make(map[string]map[string]*ModuleMetrics),
 
@@ -393,6 +406,12 @@ func NewMetrics(registry metrics.Registry, exchanges []openrtb_ext.BidderName, d
 	newMetrics.AdsCertRequestsSuccess = metrics.GetOrRegisterMeter("ads_cert_requests.ok", registry)
 	newMetrics.AdsCertRequestsFailure = metrics.GetOrRegisterMeter("ads_cert_requests.failed", registry)
 	newMetrics.adsCertSignTimer = metrics.GetOrRegisterTimer("ads_cert_sign_time", registry)
+
+	newMetrics.S3AnalyticsS3Success = metrics.GetOrRegisterMeter("analytics_s3_upload.s3.success", registry)
+	newMetrics.S3AnalyticsS3Timeout = metrics.GetOrRegisterMeter("analytics_s3_upload.s3.timeout", registry)
+	newMetrics.S3AnalyticsS3Failure = metrics.GetOrRegisterMeter("analytics_s3_upload.s3.failure", registry)
+	newMetrics.S3AnalyticsLocalSuccess = metrics.GetOrRegisterMeter("analytics_s3_upload.local.success", registry)
+	newMetrics.S3AnalyticsLocalFailure = metrics.GetOrRegisterMeter("analytics_s3_upload.local.failure", registry)
 
 	for module, stages := range moduleStageNames {
 		registerModuleMetrics(registry, module, stages, newMetrics.ModuleMetrics[module])
@@ -699,6 +718,26 @@ func (me *Metrics) RecordConnectionWant() {
 
 func (me *Metrics) RecordConnectionGot() {
 	me.ConnectionGotCounter.Inc(1)
+}
+
+func (me *Metrics) RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus) {
+	if destination == AnalyticsDestinationS3 {
+		switch status {
+		case S3UploadSuccess:
+			me.S3AnalyticsS3Success.Mark(1)
+		case S3UploadTimeout:
+			me.S3AnalyticsS3Timeout.Mark(1)
+		case S3UploadFailure:
+			me.S3AnalyticsS3Failure.Mark(1)
+		}
+	} else if destination == AnalyticsDestinationLocal {
+		switch status {
+		case S3UploadSuccess:
+			me.S3AnalyticsLocalSuccess.Mark(1)
+		case S3UploadFailure:
+			me.S3AnalyticsLocalFailure.Mark(1)
+		}
+	}
 }
 
 // RecordRequestTime implements a part of the MetricsEngine interface. The calling code is responsible

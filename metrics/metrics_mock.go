@@ -242,3 +242,7 @@ func (me *MetricsEngineMock) RecordConnectionWant() {
 func (me *MetricsEngineMock) RecordConnectionGot() {
 	me.Called()
 }
+
+func (me *MetricsEngineMock) RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus) {
+	me.Called(destination, status)
+}

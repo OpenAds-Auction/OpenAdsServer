@@ -456,6 +456,40 @@ func SyncerSetUidStatuses() []SyncerSetUidStatus {
 	}
 }
 
+// AnalyticsDestination is a destination for S3 analytics data.
+type AnalyticsDestination string
+
+const (
+	AnalyticsDestinationS3    AnalyticsDestination = "s3"
+	AnalyticsDestinationLocal AnalyticsDestination = "local"
+)
+
+// AnalyticsDestinations returns possible analytics destinations.
+func AnalyticsDestinations() []AnalyticsDestination {
+	return []AnalyticsDestination{
+		AnalyticsDestinationS3,
+		AnalyticsDestinationLocal,
+	}
+}
+
+// S3UploadStatus is a status code resulting from an S3 analytics upload.
+type S3UploadStatus string
+
+const (
+	S3UploadSuccess S3UploadStatus = "success"
+	S3UploadTimeout S3UploadStatus = "timeout"
+	S3UploadFailure S3UploadStatus = "failure"
+)
+
+// S3UploadStatuses returns possible S3 upload statuses.
+func S3UploadStatuses() []S3UploadStatus {
+	return []S3UploadStatus{
+		S3UploadSuccess,
+		S3UploadTimeout,
+		S3UploadFailure,
+	}
+}
+
 // MetricsEngine is a generic interface to record PBS metrics into the desired backend
 // The first three metrics function fire off once per incoming request, so total metrics
 // will equal the total number of incoming requests. The remaining 5 fire off per outgoing
@@ -513,4 +547,5 @@ type MetricsEngine interface {
 	RecordAdapterThrottled(adapterName openrtb_ext.BidderName)
 	RecordConnectionWant()
 	RecordConnectionGot()
+	RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus)
 }

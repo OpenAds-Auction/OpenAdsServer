@@ -11,6 +11,7 @@ import (
 	"github.com/prebid/openrtb/v20/openrtb2"
 	"github.com/prebid/prebid-server/v3/analytics"
 	"github.com/prebid/prebid-server/v3/config"
+	metricsConfig "github.com/prebid/prebid-server/v3/metrics/config"
 	"github.com/prebid/prebid-server/v3/privacy"
 	"github.com/prebid/prebid-server/v3/util/ptrutil"
 	"github.com/stretchr/testify/assert"
@@ -88,7 +89,7 @@ func initAnalytics(count *int) analytics.Runner {
 }
 
 func TestNewPBSAnalytics(t *testing.T) {
-	pbsAnalytics := New(&config.Analytics{})
+	pbsAnalytics := New(&config.Analytics{}, &metricsConfig.NilMetricsEngine{})
 	instance := pbsAnalytics.(enabledAnalytics)
 
 	assert.Equal(t, len(instance), 0)
@@ -114,7 +115,7 @@ func TestNewPBSAnalytics_FileLogger(t *testing.T) {
 		}
 	}
 	defer os.RemoveAll(TEST_DIR)
-	mod := New(&config.Analytics{File: config.FileLogs{Filename: TEST_DIR + "/test"}})
+	mod := New(&config.Analytics{File: config.FileLogs{Filename: TEST_DIR + "/test"}}, &metricsConfig.NilMetricsEngine{})
 	switch modType := mod.(type) {
 	case enabledAnalytics:
 		if len(enabledAnalytics(modType)) != 1 {
@@ -124,7 +125,7 @@ func TestNewPBSAnalytics_FileLogger(t *testing.T) {
 		t.Fatalf("Failed to initialize analytics module")
 	}
 
-	pbsAnalytics := New(&config.Analytics{File: config.FileLogs{Filename: TEST_DIR + "/test"}})
+	pbsAnalytics := New(&config.Analytics{File: config.FileLogs{Filename: TEST_DIR + "/test"}}, &metricsConfig.NilMetricsEngine{})
 	instance := pbsAnalytics.(enabledAnalytics)
 
 	assert.Equal(t, len(instance), 1)
@@ -143,7 +144,7 @@ func TestNewPBSAnalytics_Pubstack(t *testing.T) {
 			},
 			ConfRefresh: "2h",
 		},
-	})
+	}, &metricsConfig.NilMetricsEngine{})
 	instanceWithoutError := pbsAnalyticsWithoutError.(enabledAnalytics)
 
 	assert.Equal(t, len(instanceWithoutError), 1)
@@ -152,7 +153,7 @@ func TestNewPBSAnalytics_Pubstack(t *testing.T) {
 		Pubstack: config.Pubstack{
 			Enabled: true,
 		},
-	})
+	}, &metricsConfig.NilMetricsEngine{})
 	instanceWithError := pbsAnalyticsWithError.(enabledAnalytics)
 	assert.Equal(t, len(instanceWithError), 0)
 }
@@ -177,7 +178,7 @@ func TestNewModuleHttp(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, &metricsConfig.NilMetricsEngine{})
 	instanceWithoutError := agmaAnalyticsWithoutError.(enabledAnalytics)
 
 	assert.Equal(t, len(instanceWithoutError), 1)
@@ -186,7 +187,7 @@ func TestNewModuleHttp(t *testing.T) {
 		Agma: config.AgmaAnalytics{
 			Enabled: true,
 		},
-	})
+	}, &metricsConfig.NilMetricsEngine{})
 	instanceWithError := agmaAnalyticsWithError.(enabledAnalytics)
 	assert.Equal(t, len(instanceWithError), 0)
 }
