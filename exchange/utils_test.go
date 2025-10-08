@@ -4165,10 +4165,10 @@ func TestGetTargetDataPrefix(t *testing.T) {
 			description:   "TruncateTargetAttribute set is nil",
 			requestPrefix: "",
 			account: config.Account{
-				TargetingPrefix:         "hb",
+				TargetingPrefix:         "oa",
 				TruncateTargetAttribute: nil,
 			},
-			expectedResult:   "hb",
+			expectedResult:   "oa",
 			expectedWarnings: 0,
 		},
 		{
@@ -4188,7 +4188,7 @@ func TestGetTargetDataPrefix(t *testing.T) {
 				TargetingPrefix:         "test",
 				TruncateTargetAttribute: intPtr(15),
 			},
-			expectedResult:   "hb",
+			expectedResult:   "oa",
 			expectedWarnings: 1,
 		},
 		{
@@ -4198,7 +4198,7 @@ func TestGetTargetDataPrefix(t *testing.T) {
 				TargetingPrefix:         "test",
 				TruncateTargetAttribute: intPtr(1),
 			},
-			expectedResult:   "hb",
+			expectedResult:   "oa",
 			expectedWarnings: 1,
 		},
 	}

@@ -155,11 +155,11 @@
                   },
                   "type": "video",
                   "targeting": {
-                    "hb_bidder_pmbidder": "pmbidder",
-                    "hb_cache_host_pmbidd": "www.pbcserver.com",
-                    "hb_cache_path_pmbidd": "/pbcache/endpoint",
-                    "hb_pb_pmbidder": "0.50",
-                    "hb_size_pmbidder": "200x250"
+                    "oa_bidder_pmbidder": "pmbidder",
+                    "oa_cache_host_pmbidder": "www.pbcserver.com",
+                    "oa_cache_path_pmbidder": "/pbcache/endpoint",
+                    "oa_pb_pmbidder": "0.50",
+                    "oa_size_pmbidder": "200x250"
                   }
                 }
               }
@@ -183,16 +183,16 @@
                   },
                   "type": "video",
                   "targeting": {
-                    "hb_bidder": "groupm",
-                    "hb_bidder_groupm": "groupm",
-                    "hb_cache_host": "www.pbcserver.com",
-                    "hb_cache_host_groupm": "www.pbcserver.com",
-                    "hb_cache_path": "/pbcache/endpoint",
-                    "hb_cache_path_groupm": "/pbcache/endpoint",
-                    "hb_pb": "0.70",
-                    "hb_pb_groupm": "0.70",
-                    "hb_size": "200x250",
-                    "hb_size_groupm": "200x250"
+                    "oa_bidder": "groupm",
+                    "oa_bidder_groupm": "groupm",
+                    "oa_cache_host": "www.pbcserver.com",
+                    "oa_cache_host_groupm": "www.pbcserver.com",
+                    "oa_cache_path": "/pbcache/endpoint",
+                    "oa_cache_path_groupm": "/pbcache/endpoint",
+                    "oa_pb": "0.70",
+                    "oa_pb_groupm": "0.70",
+                    "oa_size": "200x250",
+                    "oa_size_groupm": "200x250"
                   }
                 }
               }
@@ -227,16 +227,16 @@
                   },
                   "type": "video",
                   "targeting": {
-                    "hb_bidder": "groupm",
-                    "hb_bidder_groupm": "groupm",
-                    "hb_cache_host": "www.pbcserver.com",
-                    "hb_cache_host_groupm": "www.pbcserver.com",
-                    "hb_cache_path": "/pbcache/endpoint",
-                    "hb_cache_path_groupm": "/pbcache/endpoint",
-                    "hb_pb": "0.60",
-                    "hb_pb_groupm": "0.60",
-                    "hb_size": "300x500",
-                    "hb_size_groupm": "300x500"
+                    "oa_bidder": "groupm",
+                    "oa_bidder_groupm": "groupm",
+                    "oa_cache_host": "www.pbcserver.com",
+                    "oa_cache_host_groupm": "www.pbcserver.com",
+                    "oa_cache_path": "/pbcache/endpoint",
+                    "oa_cache_path_groupm": "/pbcache/endpoint",
+                    "oa_pb": "0.60",
+                    "oa_pb_groupm": "0.60",
+                    "oa_size": "300x500",
+                    "oa_size_groupm": "300x500"
                   }
                 }
               }

@@ -7,16 +7,16 @@ import (
 )
 
 func TestBidderKey(t *testing.T) {
-	apnKey := PbKey.BidderKey("hb", BidderAppnexus, 50)
-	if apnKey != "hb_pb_appnexus" {
-		t.Errorf("Bad resolved targeting key. Expected hb_pb_appnexus, got %s", apnKey)
+	apnKey := PbKey.BidderKey("oa", BidderAppnexus, 50)
+	if apnKey != "oa_pb_appnexus" {
+		t.Errorf("Bad resolved targeting key. Expected oa_pb_appnexus, got %s", apnKey)
 	}
 }
 
 func TestTruncatedKey(t *testing.T) {
-	apnKey := PbKey.BidderKey("hb", BidderAppnexus, 8)
-	if apnKey != "hb_pb_ap" {
-		t.Errorf("Bad truncated targeting key. Expected hb_pb_ap, got %s", apnKey)
+	apnKey := PbKey.BidderKey("oa", BidderAppnexus, 8)
+	if apnKey != "oa_pb_ap" {
+		t.Errorf("Bad truncated targeting key. Expected oa_pb_ap, got %s", apnKey)
 	}
 }
 
@@ -31,24 +31,24 @@ func TestTruncateKey(t *testing.T) {
 			description:          "Targeting key is smaller than max length, expect targeting key to stay the same",
 			givenMaxLength:       15,
 			givenTargetingKey:    TargetingKey("_bidder_key"),
-			expectedTargetingKey: "hb_bidder_key",
+			expectedTargetingKey: "oa_bidder_key",
 		},
 		{
 			description:          "Targeting key is larger than max length, expect targeting key to be truncated",
 			givenMaxLength:       9,
 			givenTargetingKey:    TargetingKey("_bidder_key"),
-			expectedTargetingKey: "hb_bidder",
+			expectedTargetingKey: "oa_bidder",
 		},
 		{
 			description:          "Max length isn't greater than zero, expect targeting key to not be truncated",
 			givenMaxLength:       0,
 			givenTargetingKey:    TargetingKey("_bidder_key"),
-			expectedTargetingKey: "hb_bidder_key",
+			expectedTargetingKey: "oa_bidder_key",
 		},
 	}
 
 	for _, test := range testCases {
-		truncatedKey := test.givenTargetingKey.TruncateKey("hb", test.givenMaxLength)
+		truncatedKey := test.givenTargetingKey.TruncateKey("oa", test.givenMaxLength)
 		assert.Equalf(t, test.expectedTargetingKey, truncatedKey, "The Targeting Key is incorrect: %s\n", test.description)
 	}
 }

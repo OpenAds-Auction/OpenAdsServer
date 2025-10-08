@@ -47,18 +47,18 @@
   },
   "expectedAmpResponse": {
     "targeting": {
-      "hb_bidder": "unknown",
-      "hb_bidder_unknown": "unknown",
-      "hb_cache_host": "www.pbcserver.com",
-      "hb_cache_host_unknow": "www.pbcserver.com",
-      "hb_cache_id": "0",
-      "hb_cache_id_unknown": "0",
-      "hb_cache_path": "/pbcache/endpoint",
-      "hb_cache_path_unknow": "/pbcache/endpoint",
-      "hb_env": "amp",
-      "hb_env_unknown": "amp",
-      "hb_pb": "2.00",
-      "hb_pb_unknown": "2.00"
+      "oa_bidder": "unknown",
+      "oa_bidder_unknown": "unknown",
+      "oa_cache_host": "www.pbcserver.com",
+      "oa_cache_host_unknown": "www.pbcserver.com",
+      "oa_cache_id": "0",
+      "oa_cache_id_unknown": "0",
+      "oa_cache_path": "/pbcache/endpoint",
+      "oa_cache_path_unknown": "/pbcache/endpoint",
+      "oa_env": "amp",
+      "oa_env_unknown": "amp",
+      "oa_pb": "2.00",
+      "oa_pb_unknown": "2.00"
     },
     "ortb2": {
       "ext": {

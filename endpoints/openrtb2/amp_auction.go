@@ -353,16 +353,16 @@ func sendAmpResponse(
 	// Need to extract the targeting parameters from the response, as those are all that
 	// go in the AMP response
 	targets := map[string]string{}
-	byteCache := []byte("\"hb_cache_id")
+	byteCache := []byte("\"oa_cache_id")
 	if response != nil {
 		for _, seatBids := range response.SeatBid {
 			for _, bid := range seatBids.Bid {
 				if bytes.Contains(bid.Ext, byteCache) {
 					// Looking for cache_id to be set, as this should only be set on winning bids (or
 					// deal bids), and AMP can only deliver cached ads in any case.
-					// Note, this could cause issues if a targeting key value starts with "hb_cache_id",
-					// but this is a very unlikely corner case. Doing this so we can catch "hb_cache_id"
-					// and "hb_cache_id_{deal}", which allows for deal support in AMP.
+					// Note, this could cause issues if a targeting key value starts with "oa_cache_id",
+					// but this is a very unlikely corner case. Doing this so we can catch "oa_cache_id"
+					// and "oa_cache_id_{deal}", which allows for deal support in AMP.
 					bidExt := &openrtb_ext.ExtBid{}
 					err := jsonutil.Unmarshal(bid.Ext, bidExt)
 					if err != nil {

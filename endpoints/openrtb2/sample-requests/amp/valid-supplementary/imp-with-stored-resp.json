@@ -2,7 +2,7 @@
   "description": "Amp request where impression makes reference to a valid stored response with a $5.00 bid",
   "query": "tag_id=101",
   "mockAmpStoredResponse": {
-    "6d718149": "[{\"bid\": [{\"id\": \"bid_id\", \"price\": 5.00, \"ext\": {\"prebid\": {\"type\":\"video\", \"targeting\": { \"hb_pb\": \"1.20\", \"hb_cat\": \"IAB-20\", \"hb_cache_id\": \"some_id\"}}}}],\"seat\": \"appnexus\"}]"
+    "6d718149": "[{\"bid\": [{\"id\": \"bid_id\", \"price\": 5.00, \"ext\": {\"prebid\": {\"type\":\"video\", \"targeting\": { \"oa_pb\": \"1.20\", \"oa_cat\": \"IAB-20\", \"oa_cache_id\": \"some_id\"}}}}],\"seat\": \"appnexus\"}]"
   },
   "mockBidRequest": {
     "id": "request-with-stored-resp",
@@ -37,18 +37,18 @@
   },
   "expectedAmpResponse": {
     "targeting": {
-      "hb_bidder": "appnexus",
-      "hb_bidder_appnexus": "appnexus",
-      "hb_cache_host": "www.pbcserver.com",
-      "hb_cache_host_appnex": "www.pbcserver.com",
-      "hb_cache_id": "0",
-      "hb_cache_id_appnexus": "0",
-      "hb_cache_path": "/pbcache/endpoint",
-      "hb_cache_path_appnex": "/pbcache/endpoint",
-      "hb_env": "amp",
-      "hb_env_appnexus": "amp",
-      "hb_pb": "5.00",
-      "hb_pb_appnexus": "5.00"
+      "oa_bidder": "appnexus",
+      "oa_bidder_appnexus": "appnexus",
+      "oa_cache_host": "www.pbcserver.com",
+      "oa_cache_host_appnexus": "www.pbcserver.com",
+      "oa_cache_id": "0",
+      "oa_cache_id_appnexus": "0",
+      "oa_cache_path": "/pbcache/endpoint",
+      "oa_cache_path_appnexus": "/pbcache/endpoint",
+      "oa_env": "amp",
+      "oa_env_appnexus": "amp",
+      "oa_pb": "5.00",
+      "oa_pb_appnexus": "5.00"
     },
     "ortb2": {
       "ext": {
