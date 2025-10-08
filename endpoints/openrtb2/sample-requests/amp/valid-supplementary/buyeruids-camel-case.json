@@ -49,18 +49,18 @@
   },
   "expectedAmpResponse": {
     "targeting": {
-      "hb_bidder": "YahooAds",
-      "hb_bidder_YahooAds": "YahooAds",
-      "hb_cache_host": "www.pbcserver.com",
-      "hb_cache_host_YahooA": "www.pbcserver.com",
-      "hb_cache_id": "0",
-      "hb_cache_id_YahooAds": "0",
-      "hb_cache_path": "/pbcache/endpoint",
-      "hb_cache_path_YahooA": "/pbcache/endpoint",
-      "hb_env": "amp",
-      "hb_env_YahooAds": "amp",
-      "hb_pb": "2.00",
-      "hb_pb_YahooAds": "2.00"
+      "oa_bidder": "YahooAds",
+      "oa_bidder_YahooAds": "YahooAds",
+      "oa_cache_host": "www.pbcserver.com",
+      "oa_cache_host_YahooAds": "www.pbcserver.com",
+      "oa_cache_id": "0",
+      "oa_cache_id_YahooAds": "0",
+      "oa_cache_path": "/pbcache/endpoint",
+      "oa_cache_path_YahooAds": "/pbcache/endpoint",
+      "oa_env": "amp",
+      "oa_env_YahooAds": "amp",
+      "oa_pb": "2.00",
+      "oa_pb_YahooAds": "2.00"
     },
     "ortb2": {
       "ext": {

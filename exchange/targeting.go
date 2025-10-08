@@ -8,9 +8,9 @@ import (
 	"github.com/prebid/prebid-server/v3/openrtb_ext"
 )
 
-const MaxKeyLength = 20
+const MaxKeyLength = 26
 const MinKeyLength = 12 // longest attribute length without prefix
-const DefaultKeyPrefix = "hb"
+const DefaultKeyPrefix = "oa"
 
 // targetData tracks information about the winning Bid in each Imp.
 //

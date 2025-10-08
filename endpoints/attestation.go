@@ -47,7 +47,7 @@ func prepareAttestationEndpointResponse() (json.RawMessage, error) {
 	if buildTimestamp == "" {
 		buildTimestamp = attestationEndpointValueNotSet
 	}
-	
+
 	if buildSignature != attestationEndpointValueNotSet && revision != versionEndpointValueNotSet && buildTimestamp != attestationEndpointValueNotSet {
 		// Create the actual payload that was signed: <commit-hash>:<timestamp>:prebid-server-build
 		signaturePayload = fmt.Sprintf("%s:%s:prebid-server-build", revision, buildTimestamp)

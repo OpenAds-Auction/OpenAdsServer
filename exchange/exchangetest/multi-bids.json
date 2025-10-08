@@ -300,16 +300,16 @@
                                     },
                                     "type": "video",
                                     "targeting": {
-                                        "hb_bidder": "pubmatic",
-                                        "hb_bidder_pubmatic": "pubmatic",
-                                        "hb_cache_host": "www.pbcserver.com",
-                                        "hb_cache_host_pubmat": "www.pbcserver.com",
-                                        "hb_cache_path": "/pbcache/endpoint",
-                                        "hb_cache_path_pubmat": "/pbcache/endpoint",
-                                        "hb_pb": "0.70",
-                                        "hb_pb_pubmatic": "0.70",
-                                        "hb_size": "200x250",
-                                        "hb_size_pubmatic": "200x250"
+                                        "oa_bidder": "pubmatic",
+                                        "oa_bidder_pubmatic": "pubmatic",
+                                        "oa_cache_host": "www.pbcserver.com",
+                                        "oa_cache_host_pubmatic": "www.pbcserver.com",
+                                        "oa_cache_path": "/pbcache/endpoint",
+                                        "oa_cache_path_pubmatic": "/pbcache/endpoint",
+                                        "oa_pb": "0.70",
+                                        "oa_pb_pubmatic": "0.70",
+                                        "oa_size": "200x250",
+                                        "oa_size_pubmatic": "200x250"
                                     },
                                     "targetbiddercode": "pubmatic"
                                 }
@@ -345,16 +345,16 @@
                                     },
                                     "type": "video",
                                     "targeting": {
-                                        "hb_bidder": "pubmatic",
-                                        "hb_bidder_pubmatic": "pubmatic",
-                                        "hb_cache_host": "www.pbcserver.com",
-                                        "hb_cache_host_pubmat": "www.pbcserver.com",
-                                        "hb_cache_path": "/pbcache/endpoint",
-                                        "hb_cache_path_pubmat": "/pbcache/endpoint",
-                                        "hb_pb": "0.60",
-                                        "hb_pb_pubmatic": "0.60",
-                                        "hb_size": "300x500",
-                                        "hb_size_pubmatic": "300x500"
+                                        "oa_bidder": "pubmatic",
+                                        "oa_bidder_pubmatic": "pubmatic",
+                                        "oa_cache_host": "www.pbcserver.com",
+                                        "oa_cache_host_pubmatic": "www.pbcserver.com",
+                                        "oa_cache_path": "/pbcache/endpoint",
+                                        "oa_cache_path_pubmatic": "/pbcache/endpoint",
+                                        "oa_pb": "0.60",
+                                        "oa_pb_pubmatic": "0.60",
+                                        "oa_size": "300x500",
+                                        "oa_size_pubmatic": "300x500"
                                     },
                                     "targetbiddercode": "pubmatic"
                                 }
@@ -374,11 +374,11 @@
                                     },
                                     "type": "video",
                                     "targeting": {
-                                        "hb_bidder_pubm2": "pubm2",
-                                        "hb_cache_host_pubm2": "www.pbcserver.com",
-                                        "hb_cache_path_pubm2": "/pbcache/endpoint",
-                                        "hb_pb_pubm2": "0.50",
-                                        "hb_size_pubm2": "200x250"
+                                        "oa_bidder_pubm2": "pubm2",
+                                        "oa_cache_host_pubm2": "www.pbcserver.com",
+                                        "oa_cache_path_pubm2": "/pbcache/endpoint",
+                                        "oa_pb_pubm2": "0.50",
+                                        "oa_size_pubm2": "200x250"
                                     },
                                     "targetbiddercode": "pubm2"
                                 }
@@ -404,11 +404,11 @@
                                     "targetbiddercode": "appnexus",
                                     "type": "banner",
                                     "targeting": {
-                                        "hb_bidder_appnexus": "appnexus",
-                                        "hb_cache_host_appnex": "www.pbcserver.com",
-                                        "hb_cache_path_appnex": "/pbcache/endpoint",
-                                        "hb_pb_appnexus": "0.20",
-                                        "hb_size_appnexus": "200x500"
+                                        "oa_bidder_appnexus": "appnexus",
+                                        "oa_cache_host_appnexus": "www.pbcserver.com",
+                                        "oa_cache_path_appnexus": "/pbcache/endpoint",
+                                        "oa_pb_appnexus": "0.20",
+                                        "oa_size_appnexus": "200x500"
                                     }
                                 }
                             }

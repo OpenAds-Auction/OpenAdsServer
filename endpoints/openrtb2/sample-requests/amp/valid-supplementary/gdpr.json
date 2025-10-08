@@ -50,18 +50,18 @@
   },
   "expectedAmpResponse": {
     "targeting": {
-      "hb_bidder": "appnexus",
-      "hb_bidder_appnexus": "appnexus",
-      "hb_cache_host": "www.pbcserver.com",
-      "hb_cache_host_appnex": "www.pbcserver.com",
-      "hb_cache_id": "0",
-      "hb_cache_id_appnexus": "0",
-      "hb_cache_path": "/pbcache/endpoint",
-      "hb_cache_path_appnex": "/pbcache/endpoint",
-      "hb_env": "amp",
-      "hb_env_appnexus": "amp",
-      "hb_pb": "15.00",
-      "hb_pb_appnexus": "15.00"
+      "oa_bidder": "appnexus",
+      "oa_bidder_appnexus": "appnexus",
+      "oa_cache_host": "www.pbcserver.com",
+      "oa_cache_host_appnexus": "www.pbcserver.com",
+      "oa_cache_id": "0",
+      "oa_cache_id_appnexus": "0",
+      "oa_cache_path": "/pbcache/endpoint",
+      "oa_cache_path_appnexus": "/pbcache/endpoint",
+      "oa_env": "amp",
+      "oa_env_appnexus": "amp",
+      "oa_pb": "15.00",
+      "oa_pb_appnexus": "15.00"
     },
     "ortb2": {
       "ext": {

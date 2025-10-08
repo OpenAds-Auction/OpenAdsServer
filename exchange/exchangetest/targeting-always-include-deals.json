@@ -173,12 +173,12 @@
                   },
                   "type": "video",
                   "targeting": {
-                    "hb_bidder_audienceNe": "audienceNetwork",
-                    "hb_cache_host_audien": "www.pbcserver.com",
-                    "hb_cache_path_audien": "/pbcache/endpoint",
-                    "hb_deal_audienceNetw": "deal-4",
-                    "hb_pb_audienceNetwor": "0.50",
-                    "hb_size_audienceNetw": "200x250"
+                    "oa_bidder_audienceNetwork": "audienceNetwork",
+                    "oa_cache_host_audienceNetw": "www.pbcserver.com",
+                    "oa_cache_path_audienceNetw": "/pbcache/endpoint",
+                    "oa_deal_audienceNetwork": "deal-4",
+                    "oa_pb_audienceNetwork": "0.50",
+                    "oa_size_audienceNetwork": "200x250"
                   }
                 }
               }
@@ -219,18 +219,18 @@
                   },
                   "type": "video",
                   "targeting": {
-                    "hb_bidder": "appnexus",
-                    "hb_bidder_appnexus": "appnexus",
-                    "hb_cache_host": "www.pbcserver.com",
-                    "hb_cache_host_appnex": "www.pbcserver.com",
-                    "hb_cache_path": "/pbcache/endpoint",
-                    "hb_cache_path_appnex": "/pbcache/endpoint",
-                    "hb_pb": "0.70",
-                    "hb_pb_appnexus": "0.70",
-                    "hb_deal":"deal-1",
-                    "hb_deal_appnexus":"deal-1",
-                    "hb_size": "200x250",
-                    "hb_size_appnexus": "200x250"
+                    "oa_bidder": "appnexus",
+                    "oa_bidder_appnexus": "appnexus",
+                    "oa_cache_host": "www.pbcserver.com",
+                    "oa_cache_host_appnexus": "www.pbcserver.com",
+                    "oa_cache_path": "/pbcache/endpoint",
+                    "oa_cache_path_appnexus": "/pbcache/endpoint",
+                    "oa_pb": "0.70",
+                    "oa_pb_appnexus": "0.70",
+                    "oa_deal":"deal-1",
+                    "oa_deal_appnexus":"deal-1",
+                    "oa_size": "200x250",
+                    "oa_size_appnexus": "200x250"
                   }
                 }
               }
@@ -267,18 +267,18 @@
                   },
                   "type": "video",
                   "targeting": {
-                    "hb_bidder": "appnexus",
-                    "hb_bidder_appnexus": "appnexus",
-                    "hb_cache_host": "www.pbcserver.com",
-                    "hb_cache_host_appnex": "www.pbcserver.com",
-                    "hb_cache_path": "/pbcache/endpoint",
-                    "hb_cache_path_appnex": "/pbcache/endpoint",
-                    "hb_deal":"deal-3",
-                    "hb_deal_appnexus":"deal-3",
-                    "hb_pb": "0.60",
-                    "hb_pb_appnexus": "0.60",
-                    "hb_size": "300x500",
-                    "hb_size_appnexus": "300x500"
+                    "oa_bidder": "appnexus",
+                    "oa_bidder_appnexus": "appnexus",
+                    "oa_cache_host": "www.pbcserver.com",
+                    "oa_cache_host_appnexus": "www.pbcserver.com",
+                    "oa_cache_path": "/pbcache/endpoint",
+                    "oa_cache_path_appnexus": "/pbcache/endpoint",
+                    "oa_deal":"deal-3",
+                    "oa_deal_appnexus":"deal-3",
+                    "oa_pb": "0.60",
+                    "oa_pb_appnexus": "0.60",
+                    "oa_size": "300x500",
+                    "oa_size_appnexus": "300x500"
                   }
                 }
               }

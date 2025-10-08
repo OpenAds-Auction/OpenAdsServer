@@ -95,9 +95,9 @@ type Configuration struct {
 	GenerateRequestID bool                      `mapstructure:"generate_request_id"`
 	HostSChainNode    *openrtb2.SupplyChainNode `mapstructure:"host_schain_node"`
 	// Experiment configures non-production ready features.
-	Experiment            Experiment `mapstructure:"experiment"`
-	DataCenter            string     `mapstructure:"datacenter"`
-	BidderAllowList   []string `mapstructure:"bidder_allow_list"`
+	Experiment      Experiment `mapstructure:"experiment"`
+	DataCenter      string     `mapstructure:"datacenter"`
+	BidderAllowList []string   `mapstructure:"bidder_allow_list"`
 	// BidderInfos supports adapter overrides in extra configs like pbs.json, pbs.yaml, etc.
 	// Refers to main.go `configFileName` constant
 	BidderInfos BidderInfos `mapstructure:"adapters"`

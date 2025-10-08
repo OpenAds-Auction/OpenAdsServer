@@ -1473,7 +1473,7 @@ func (m *mockAmpExchange) HoldAuction(ctx context.Context, auctionRequest *excha
 		SeatBid: []openrtb2.SeatBid{{
 			Bid: []openrtb2.Bid{{
 				AdM: "<script></script>",
-				Ext: json.RawMessage(`{ "prebid": {"targeting": { "hb_pb": "1.20", "hb_appnexus_pb": "1.20", "hb_cache_id": "some_id"}}}`),
+				Ext: json.RawMessage(`{ "prebid": {"targeting": { "oa_pb": "1.20", "oa_appnexus_pb": "1.20", "oa_cache_id": "some_id"}}}`),
 			}},
 		}},
 		Ext: json.RawMessage(`{ "errors": {"openx":[ { "code": 1, "message": "The request exceeded the timeout allocated" } ] } }`),
@@ -1509,7 +1509,7 @@ func (m *mockAmpExchangeWarnings) HoldAuction(ctx context.Context, r *exchange.A
 		SeatBid: []openrtb2.SeatBid{{
 			Bid: []openrtb2.Bid{{
 				AdM: "<script></script>",
-				Ext: json.RawMessage(`{ "prebid": {"targeting": { "hb_pb": "1.20", "hb_appnexus_pb": "1.20", "hb_cache_id": "some_id"}}}`),
+				Ext: json.RawMessage(`{ "prebid": {"targeting": { "oa_pb": "1.20", "oa_appnexus_pb": "1.20", "oa_cache_id": "some_id"}}}`),
 			}},
 		}},
 		Ext: json.RawMessage(`{ "warnings": {"appnexus": [{"code": 10003, "message": "debug turned off for bidder"}] }}`),
@@ -1749,16 +1749,16 @@ func TestBuildAmpObject(t *testing.T) {
 					SeatBid: []openrtb2.SeatBid{{
 						Bid: []openrtb2.Bid{{
 							AdM: "<script></script>",
-							Ext: json.RawMessage(`{ "prebid": {"targeting": { "hb_pb": "1.20", "hb_appnexus_pb": "1.20", "hb_cache_id": "some_id"}}}`),
+							Ext: json.RawMessage(`{ "prebid": {"targeting": { "oa_pb": "1.20", "oa_appnexus_pb": "1.20", "oa_cache_id": "some_id"}}}`),
 						}},
 						Seat: "",
 					}},
 					Ext: json.RawMessage(`{ "errors": {"openx":[ { "code": 1, "message": "The request exceeded the timeout allocated" } ] } }`),
 				},
 				AmpTargetingValues: map[string]string{
-					"hb_appnexus_pb": "1.20",
-					"hb_cache_id":    "some_id",
-					"hb_pb":          "1.20",
+					"oa_appnexus_pb": "1.20",
+					"oa_cache_id":    "some_id",
+					"oa_pb":          "1.20",
 				},
 				Origin: "",
 			},
@@ -1767,7 +1767,7 @@ func TestBuildAmpObject(t *testing.T) {
 			description:     "Global targeting from bid response should be applied for Amp",
 			inTagId:         "test",
 			inStoredRequest: json.RawMessage(`{"id":"some-request-id","site":{"page":"prebid.org"},"imp":[{"id":"some-impression-id","banner":{"format":[{"w":300,"h":250}]},"ext":{"prebid":{"bidder":{"appnexus":{"placementId":12883451}}}}}],"tmax":500}`),
-			exchange:        &mockAmpExchange{requestExt: json.RawMessage(`{ "prebid": {"targeting": { "test_key": "test_value", "hb_appnexus_pb": "9999" } }, "errors": {"openx":[ { "code": 1, "message": "The request exceeded the timeout allocated" } ] } }`)},
+			exchange:        &mockAmpExchange{requestExt: json.RawMessage(`{ "prebid": {"targeting": { "test_key": "test_value", "oa_appnexus_pb": "9999" } }, "errors": {"openx":[ { "code": 1, "message": "The request exceeded the timeout allocated" } ] } }`)},
 			expectedAmpObject: &analytics.AmpObject{
 				Status: http.StatusOK,
 				Errors: nil,
@@ -1805,16 +1805,16 @@ func TestBuildAmpObject(t *testing.T) {
 					SeatBid: []openrtb2.SeatBid{{
 						Bid: []openrtb2.Bid{{
 							AdM: "<script></script>",
-							Ext: json.RawMessage(`{ "prebid": {"targeting": { "hb_pb": "1.20", "hb_appnexus_pb": "1.20", "hb_cache_id": "some_id"}}}`),
+							Ext: json.RawMessage(`{ "prebid": {"targeting": { "oa_pb": "1.20", "oa_appnexus_pb": "1.20", "oa_cache_id": "some_id"}}}`),
 						}},
 						Seat: "",
 					}},
-					Ext: json.RawMessage(`{ "prebid": {"targeting": { "test_key": "test_value", "hb_appnexus_pb": "9999" } }, "errors": {"openx":[ { "code": 1, "message": "The request exceeded the timeout allocated" } ] } }`),
+					Ext: json.RawMessage(`{ "prebid": {"targeting": { "test_key": "test_value", "oa_appnexus_pb": "9999" } }, "errors": {"openx":[ { "code": 1, "message": "The request exceeded the timeout allocated" } ] } }`),
 				},
 				AmpTargetingValues: map[string]string{
-					"hb_appnexus_pb": "1.20", // Bid level has higher priority than global
-					"hb_cache_id":    "some_id",
-					"hb_pb":          "1.20",
+					"oa_appnexus_pb": "1.20", // Bid level has higher priority than global
+					"oa_cache_id":    "some_id",
+					"oa_pb":          "1.20",
 					"test_key":       "test_value", // New global key added
 				},
 				Origin: "",
@@ -2275,7 +2275,7 @@ func TestSendAmpResponse_LogsErrors(t *testing.T) {
 			writer:         httptest.NewRecorder(),
 			request:        &openrtb2.BidRequest{ID: "some-id", Test: 1},
 			response: &openrtb2.BidResponse{ID: "some-id", SeatBid: []openrtb2.SeatBid{
-				{Bid: []openrtb2.Bid{{Ext: json.RawMessage(`"hb_cache_id`)}}},
+				{Bid: []openrtb2.Bid{{Ext: json.RawMessage(`"oa_cache_id`)}}},
 			}},
 			hookExecutor: &hookexecution.EmptyHookExecutor{},
 		},

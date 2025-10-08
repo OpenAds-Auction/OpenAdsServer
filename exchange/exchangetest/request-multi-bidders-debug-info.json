@@ -157,18 +157,18 @@
                   "meta": {
                   },
                   "targeting": {
-                    "hb_bidder": "appnexus",
-                    "hb_bidder_appnexus": "appnexus",
-                    "hb_cache_host": "www.pbcserver.com",
-                    "hb_cache_host_appnex": "www.pbcserver.com",
-                    "hb_cache_path": "/pbcache/endpoint",
-                    "hb_cache_path_appnex": "/pbcache/endpoint",
-                    "hb_size": "200x250",
-                    "hb_size_appnexus": "200x250",
-                    "hb_pb": "12.00",
-                    "hb_pb_appnexus": "12.00",
-                    "hb_pb_cat_dur": "12.00_VideoGames_15s",
-                    "hb_pb_cat_dur_appnex": "12.00_VideoGames_15s"
+                    "oa_bidder": "appnexus",
+                    "oa_bidder_appnexus": "appnexus",
+                    "oa_cache_host": "www.pbcserver.com",
+                    "oa_cache_host_appnexus": "www.pbcserver.com",
+                    "oa_cache_path": "/pbcache/endpoint",
+                    "oa_cache_path_appnexus": "/pbcache/endpoint",
+                    "oa_size": "200x250",
+                    "oa_size_appnexus": "200x250",
+                    "oa_pb": "12.00",
+                    "oa_pb_appnexus": "12.00",
+                    "oa_pb_cat_dur": "12.00_VideoGames_15s",
+                    "oa_pb_cat_dur_appnexus": "12.00_VideoGames_15s"
                   }
                 }
               }

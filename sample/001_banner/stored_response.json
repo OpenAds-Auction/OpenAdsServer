@@ -26,9 +26,9 @@
                                 "adaptercode": "pubmatic"
                             },
                             "targeting": {
-                                "hb_bidder": "pubmatic",
-                                "hb_pb": "1.00",
-                                "hb_size": "300x250"
+                                "oa_bidder": "pubmatic",
+                                "oa_pb": "1.00",
+                                "oa_size": "300x250"
                             },
                             "type": "banner",
                             "video": {

@@ -6722,6 +6722,6 @@ func TestAmpEnv(t *testing.T) {
 		var responseExt PrebidExt
 		err = json.Unmarshal(outBidResponse.SeatBid[0].Bid[0].Ext, &responseExt)
 		assert.NoErrorf(t, err, "%s. Failed to Unmarshal HoldAuction response. The error: %v \n", test.desc, err)
-		assert.Equalf(t, test.expectedEnvInResponse, responseExt.Prebid.Targeting["hb_env"], "Response mismatch")
+		assert.Equalf(t, test.expectedEnvInResponse, responseExt.Prebid.Targeting["oa_env"], "Response mismatch")
 	}
 }
