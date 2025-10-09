@@ -1,10 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ '*' ]
   pull_request:
-    branches: [ 'main', 'ttd-auction-server-main' ]
+    branches: [ 'main', 'staging', 'ttd-auction-server-main' ]
+  push:
+    branches: [ 'main', 'staging', 'ttd-auction-server-main' ]
   release:
     types: [ published ]
   workflow_dispatch:
@@ -457,33 +457,3 @@ jobs:
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  cleanup:
-    name: Cleanup
-    needs: [test, build, build-pr, security-scan]
-    runs-on: ubuntu-latest
-    if: always()
-    
-    steps:
-    - name: Delete old artifacts
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            run_id: context.runId
-          });
-          
-          const cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - 30); // Keep artifacts for 30 days
-          
-          for (const artifact of artifacts.data.artifacts) {
-            if (new Date(artifact.created_at) < cutoff) {
-              await github.rest.actions.deleteArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                artifact_id: artifact.id
-              });
-            }
-          }
