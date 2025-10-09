@@ -160,6 +160,9 @@ func TestLogAuctionObject_FlushOnSizeThreshold(t *testing.T) {
 		s3Module.LogAuctionObject(ao)
 	}
 
+	// Wait for async processing to complete
+	time.Sleep(100 * time.Millisecond)
+
 	// Should have flushed due to size threshold
 	calls := client.getCalls()
 	assert.Greater(t, len(calls), 0, "should have flushed due to size threshold")
