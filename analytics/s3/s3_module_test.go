@@ -302,7 +302,7 @@ func TestShutdownFlushing(t *testing.T) {
 	}
 	s3Module.LogVideoObject(vo)
 
-	`` // Advance the mock clock to trigger any time-based flushes
+	// Advance the mock clock to trigger any time-based flushes
 	clk.Add(2 * time.Minute)
 
 	s3Module.Shutdown()
