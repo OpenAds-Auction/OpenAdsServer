@@ -302,13 +302,27 @@ func TestShutdownFlushing(t *testing.T) {
 	}
 	s3Module.LogVideoObject(vo)
 
+	`` // Advance the mock clock to trigger any time-based flushes
+	clk.Add(2 * time.Minute)
+
 	s3Module.Shutdown()
 
 	// Wait for async uploads to complete (flush spawns goroutines for uploads)
-	time.Sleep(200 * time.Millisecond)
+	// Use polling to wait for all 3 calls to complete
+	maxWait := 5 * time.Second
+	pollInterval := 50 * time.Millisecond
+	start := time.Now()
+
+	var calls []mockS3Call
+	for time.Since(start) < maxWait {
+		calls = client.getCalls()
+		if len(calls) >= 3 {
+			break
+		}
+		time.Sleep(pollInterval)
+	}
 
 	// Should have 3 uploads (one for each event type)
-	calls := client.getCalls()
 	assert.Len(t, calls, 3, "shutdown should flush all 3 event types")
 
 	eventTypes := make(map[string]bool)
