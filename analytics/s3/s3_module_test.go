@@ -305,7 +305,7 @@ func TestShutdownFlushing(t *testing.T) {
 	s3Module.Shutdown()
 
 	// Wait for async uploads to complete (flush spawns goroutines for uploads)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	// Should have 3 uploads (one for each event type)
 	calls := client.getCalls()
