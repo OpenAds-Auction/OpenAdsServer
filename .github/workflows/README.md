@@ -34,9 +34,9 @@ The workflow requires the following permissions:
 ## Build Attestation
 
 The build process generates cryptographic attestation including:
-- RSA public/private key pair
-- Digital signature of build metadata
-- JSON attestation file with all verification data
+- RSA key pair (private key used for signing, then deleted)
+- Digital signature of build metadata (embedded in binary)
+- Public key (saved as artifact for verification)
 
 ### Public Key Availability
 
@@ -73,6 +73,6 @@ The pipeline includes Trivy vulnerability scanning that:
 
 ## Artifact Management
 
-- Build attestation files are stored as artifacts for 30 days
-- Old artifacts are automatically cleaned up
+- Public keys are stored as artifacts (365 days for main builds, 30 days for PR builds)
+- Artifacts are automatically cleaned up based on retention policies
 - Release artifacts are permanently stored with GitHub releases
