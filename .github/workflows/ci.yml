@@ -70,7 +70,8 @@ jobs:
     if: |
       (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main')) ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'release'
+      github.event_name == 'release' ||
+      (github.event_name == 'pull_request' && github.event.action == 'synchronize')
     
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
