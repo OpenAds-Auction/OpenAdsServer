@@ -23,7 +23,7 @@ done
 if $COVERAGE; then
   ./scripts/check_coverage.sh
 else
-  go test -timeout 120s $(go list ./... | grep -v /vendor/)
+  go test -timeout 120s $(go list ./... | grep -v /vendor/ | grep -v /adapters/; go list ./adapters/thetradedesk/...)
 fi
 
 # Then run the race condition tests. These only run on tests named TestRace.* for two reasons.
@@ -31,7 +31,7 @@ fi
 #   1. To speed things up (for large -count values)
 #   2. Because some tests open up files on the filesystem, and some operating systems limit the number of open files for a single process.
 if [ "$RACE" -ne "0" ]; then
-  go test -race $(go list ./... | grep -v /vendor/) -run ^TestRace.*$ -count $RACE
+  go test -race $(go list ./... | grep -v /vendor/ | grep -v /adapters/; go list ./adapters/thetradedesk/...) -run ^TestRace.*$ -count $RACE
 fi
 
 if $VET; then

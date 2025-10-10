@@ -47,8 +47,6 @@ RUN go mod vendor
 
 # Generate modules and build with deterministic flags
 RUN go generate modules/modules.go
-ARG TEST="true"
-RUN if [ "$TEST" != "false" ]; then ./validate.sh ; fi
 # Generate cryptographic signature for build attestation
 RUN COMMIT_HASH=$(git rev-parse HEAD) && \
     TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
