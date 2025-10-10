@@ -104,7 +104,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
           type=raw,value=latest,enable={{is_default_branch}}
           type=sha,prefix={{branch}}-
-          type=raw,value=pr-${{ github.event.number }}-${{ github.sha }},enable={{is_pr}}
+          type=raw,value=pr-${{ github.event.number }}-${{ github.sha }},enable=${{ github.event_name == 'pull_request' }}
 
     - name: Build and push Docker image
       id: build
