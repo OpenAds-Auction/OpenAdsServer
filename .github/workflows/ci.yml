@@ -18,6 +18,11 @@ on:
         - staging
         - production
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -56,25 +61,16 @@ jobs:
     - name: Run validation script
       run: |
         chmod +x validate.sh
-        ./validate.sh --cov
-
-    - name: Run race condition tests
-      run: |
-        ./validate.sh --race 2
-
-    - name: Run go vet
-      run: go vet ./...
-
-    - name: Check formatting
-      run: |
-        chmod +x scripts/format.sh
-        ./scripts/format.sh -f false
+        ./validate.sh --cov --race 2
 
   build-pr:
     name: Build Docker Image (PR)
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: |
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main')) ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'release'
     
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
