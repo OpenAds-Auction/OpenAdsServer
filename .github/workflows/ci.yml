@@ -25,7 +25,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: openads-auction/openadsserver
 
 jobs:
   test:
