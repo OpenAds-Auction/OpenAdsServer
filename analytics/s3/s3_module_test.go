@@ -302,6 +302,9 @@ func TestShutdownFlushing(t *testing.T) {
 	}
 	s3Module.LogVideoObject(vo)
 
+	// Give the goroutines time to process events from channels into buffers
+	time.Sleep(100 * time.Millisecond)
+
 	s3Module.Shutdown()
 
 	// Wait for async uploads to complete (flush spawns goroutines for uploads)
