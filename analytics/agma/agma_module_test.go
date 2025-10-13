@@ -727,9 +727,6 @@ func TestShutdownFlush(t *testing.T) {
 	go logger.start()
 	logger.LogAuctionObject(&mockValidAuctionObject)
 
-	// Advance the mock clock to trigger any time-based flushes
-	clockMock.Add(2 * time.Minute)
-
 	logger.Shutdown()
 
 	// Wait for async processing to complete
