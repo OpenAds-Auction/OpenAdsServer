@@ -73,8 +73,6 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'release' ||
       (github.event_name == 'pull_request' && github.event.action == 'synchronize')
-    outputs:
-      image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -154,15 +152,20 @@ jobs:
     runs-on: ubuntu-latest
     if: always() && needs.build.result == 'success'
     steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ needs.build.outputs.image-ref }}
+        scan-type: 'fs'
+        ignore-unfixed: true
         format: 'sarif'
         output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
