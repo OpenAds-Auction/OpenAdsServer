@@ -47,8 +47,6 @@ RUN go mod vendor
 
 # Generate modules and build with deterministic flags
 RUN go generate modules/modules.go
-ARG TEST="true"
-RUN if [ "$TEST" != "false" ]; then ./validate.sh ; fi
 # Generate cryptographic signature for build attestation
 RUN COMMIT_HASH=$(git rev-parse HEAD) && \
     TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
@@ -73,6 +71,9 @@ RUN COMMIT_HASH=$(git rev-parse HEAD) && \
     echo "Build Timestamp: $TIMESTAMP" && \
     echo "Payload Format: <commit-hash>:<timestamp>:openads-server-build" && \
     echo "=== END VERIFICATION INFO ===" && \
+    # Create artifacts directory and save only the public key \
+    mkdir -p /artifacts && \
+    cp build_key.pub /artifacts/build_key.pub && \
     rm -f build_key.pem signature.bin && \
     go build \
         -mod=vendor \
@@ -84,6 +85,8 @@ RUN COMMIT_HASH=$(git rev-parse HEAD) && \
 FROM ubuntu:22.04 AS release
 LABEL org.opencontainers.image.authors="openads-eng@thetradedesk.com"
 WORKDIR /usr/local/bin/
+
+COPY --from=build /artifacts /artifacts
 COPY --from=build /app/prebid-server/openads /usr/local/bin/openads
 RUN chmod a+xr /usr/local/bin/openads
 COPY --from=build /app/prebid-server/static static/

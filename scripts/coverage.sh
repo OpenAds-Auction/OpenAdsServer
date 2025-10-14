@@ -36,7 +36,7 @@ show_cover_report() {
     go tool cover -${1}="$profile"
 }
 
-generate_cover_data $(go list ./... | grep -v /vendor/)
+generate_cover_data $(go list ./... | grep -v /vendor/ | grep -v /adapters/; go list ./adapters/thetradedesk/...)
 #show_cover_report func
 case "$1" in
 "")

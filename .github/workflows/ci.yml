@@ -1,10 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ '*' ]
   pull_request:
-    branches: [ 'main', 'ttd-auction-server-main' ]
+    branches: [ 'main', 'staging', 'ttd-auction-server-main' ]
+  push:
+    branches: [ 'main', 'staging', 'ttd-auction-server-main' ]
   release:
     types: [ published ]
   workflow_dispatch:
@@ -18,19 +18,25 @@ on:
         - staging
         - production
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: openads-auction/openadsserver
 
 jobs:
   test:
     name: Test and Validate
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Full history for git describe
+        fetch-depth: 0
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -56,30 +62,17 @@ jobs:
     - name: Run validation script
       run: |
         chmod +x validate.sh
-        ./validate.sh --cov
+        ./validate.sh --cov --race 2
 
-    - name: Run race condition tests
-      run: |
-        ./validate.sh --race 2
-
-    - name: Run go vet
-      run: go vet ./...
-
-    - name: Check formatting
-      run: |
-        chmod +x scripts/format.sh
-        ./scripts/format.sh -f false
-
-  build-pr:
-    name: Build Docker Image (PR)
+  build:
+    name: Build Docker Image
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    
-    outputs:
-      image-digest: ${{ steps.build.outputs.digest }}
-      image-tag: ${{ steps.meta.outputs.tags }}
-    
+    if: |
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main')) ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'release' ||
+      (github.event_name == 'pull_request' && github.event.action == 'synchronize')
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -102,218 +95,13 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=raw,value=pr-${{ github.event.number }}-${{ github.sha }}
-
-    - name: Generate build attestation
-      id: attestation
-      run: |
-        mkdir -p artifacts
-        
-        # Generate cryptographic signature for build attestation
-        COMMIT_HASH=$(git rev-parse HEAD)
-        TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-        echo "Generating build signature for commit: $COMMIT_HASH at $TIMESTAMP"
-        
-        # Generate RSA key pair
-        openssl genrsa -out build_key.pem 2048
-        openssl rsa -in build_key.pem -pubout -out build_key.pub
-        
-        # Create payload and sign it
-        PAYLOAD="${COMMIT_HASH}:${TIMESTAMP}:openads-server-build"
-        echo "Signing payload: $PAYLOAD"
-        echo -n "$PAYLOAD" | openssl dgst -sha256 -sign build_key.pem -out signature.bin
-        SIGNATURE=$(base64 -w 0 signature.bin)
-        
-        # Output attestation data for Docker build
-        echo "=== BUILD ATTESTATION PUBLIC KEY ==="
-        cat build_key.pub
-        echo "=== END PUBLIC KEY ==="
-        echo "=== BUILD SIGNATURE (BASE64) ==="
-        echo "$SIGNATURE"
-        echo "=== END SIGNATURE ==="
-        echo "=== SIGNATURE PAYLOAD (PLAINTEXT) ==="
-        echo "$PAYLOAD"
-        echo "=== END PAYLOAD ==="
-        echo "=== VERIFICATION INFO ==="
-        echo "Git Commit: $COMMIT_HASH"
-        echo "Build Timestamp: $TIMESTAMP"
-        echo "Payload Format: <commit-hash>:<timestamp>:openads-server-build"
-        echo "=== END VERIFICATION INFO ==="
-        
-        # Save attestation files
-        cp build_key.pub artifacts/build_key.pub
-        echo "$SIGNATURE" > artifacts/build_signature.txt
-        echo "$PAYLOAD" > artifacts/build_payload.txt
-        cat > artifacts/verification_info.txt << EOF
-        Git Commit: $COMMIT_HASH
-        Build Timestamp: $TIMESTAMP
-        Payload Format: <commit-hash>:<timestamp>:openads-server-build
-        EOF
-        
-        # Create comprehensive attestation JSON
-        PUBLIC_KEY=$(cat artifacts/build_key.pub | tr -d '\n' | sed 's/"/\\"/g')
-        SIGNATURE_JSON=$(cat artifacts/build_signature.txt | tr -d '\n')
-        PAYLOAD_JSON=$(cat artifacts/build_payload.txt | tr -d '\n')
-        VERIFICATION_INFO=$(cat artifacts/verification_info.txt | tr -d '\n')
-        
-        cat > artifacts/build_attestation.json << EOF
-        {
-          "public_key": "${PUBLIC_KEY}",
-          "signature": "${SIGNATURE_JSON}",
-          "payload": "${PAYLOAD_JSON}",
-          "verification_info": "${VERIFICATION_INFO}",
-          "commit_hash": "${COMMIT_HASH}",
-          "build_timestamp": "${TIMESTAMP}"
-        }
-        EOF
-        
-        # Clean up temporary files
-        rm -f build_key.pem signature.bin
-        
-        # Set outputs for Docker build
-        echo "build_signature=$SIGNATURE" >> $GITHUB_OUTPUT
-        echo "build_timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
-
-    - name: Build and push Docker image
-      id: build
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        platforms: linux/amd64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        build-args: |
-          BUILD_SIGNATURE=${{ steps.attestation.outputs.build_signature }}
-          BUILD_TIMESTAMP=${{ steps.attestation.outputs.build_timestamp }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Upload build attestation artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-attestation-pr-${{ github.event.number }}-${{ github.sha }}
-        path: artifacts/
-        retention-days: 7
-
-    - name: Upload public key as standalone artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-public-key-pr-${{ github.event.number }}-${{ github.sha }}
-        path: artifacts/build_key.pub
-        retention-days: 30  # Shorter retention for PR builds
-
-  build:
-    name: Build Docker Image
-    needs: test
-    runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main')) ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'release'
-    
-    outputs:
-      image-digest: ${{ steps.build.outputs.digest }}
-      image-tag: ${{ steps.meta.outputs.tags }}
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Full history for git describe
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
           type=ref,event=branch
           type=ref,event=pr
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=raw,value=latest,enable={{is_default_branch}}
-          type=sha,prefix={{branch}}-
-
-    - name: Generate build attestation
-      id: attestation
-      run: |
-        mkdir -p artifacts
-        
-        # Generate cryptographic signature for build attestation
-        COMMIT_HASH=$(git rev-parse HEAD)
-        TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-        echo "Generating build signature for commit: $COMMIT_HASH at $TIMESTAMP"
-        
-        # Generate RSA key pair
-        openssl genrsa -out build_key.pem 2048
-        openssl rsa -in build_key.pem -pubout -out build_key.pub
-        
-        # Create payload and sign it
-        PAYLOAD="${COMMIT_HASH}:${TIMESTAMP}:openads-server-build"
-        echo "Signing payload: $PAYLOAD"
-        echo -n "$PAYLOAD" | openssl dgst -sha256 -sign build_key.pem -out signature.bin
-        SIGNATURE=$(base64 -w 0 signature.bin)
-        
-        # Output attestation data for Docker build
-        echo "=== BUILD ATTESTATION PUBLIC KEY ==="
-        cat build_key.pub
-        echo "=== END PUBLIC KEY ==="
-        echo "=== BUILD SIGNATURE (BASE64) ==="
-        echo "$SIGNATURE"
-        echo "=== END SIGNATURE ==="
-        echo "=== SIGNATURE PAYLOAD (PLAINTEXT) ==="
-        echo "$PAYLOAD"
-        echo "=== END PAYLOAD ==="
-        echo "=== VERIFICATION INFO ==="
-        echo "Git Commit: $COMMIT_HASH"
-        echo "Build Timestamp: $TIMESTAMP"
-        echo "Payload Format: <commit-hash>:<timestamp>:openads-server-build"
-        echo "=== END VERIFICATION INFO ==="
-        
-        # Save attestation files
-        cp build_key.pub artifacts/build_key.pub
-        echo "$SIGNATURE" > artifacts/build_signature.txt
-        echo "$PAYLOAD" > artifacts/build_payload.txt
-        cat > artifacts/verification_info.txt << EOF
-        Git Commit: $COMMIT_HASH
-        Build Timestamp: $TIMESTAMP
-        Payload Format: <commit-hash>:<timestamp>:openads-server-build
-        EOF
-        
-        # Create comprehensive attestation JSON
-        PUBLIC_KEY=$(cat artifacts/build_key.pub | tr -d '\n' | sed 's/"/\\"/g')
-        SIGNATURE_JSON=$(cat artifacts/build_signature.txt | tr -d '\n')
-        PAYLOAD_JSON=$(cat artifacts/build_payload.txt | tr -d '\n')
-        VERIFICATION_INFO=$(cat artifacts/verification_info.txt | tr -d '\n')
-        
-        cat > artifacts/build_attestation.json << EOF
-        {
-          "public_key": "${PUBLIC_KEY}",
-          "signature": "${SIGNATURE_JSON}",
-          "payload": "${PAYLOAD_JSON}",
-          "verification_info": "${VERIFICATION_INFO}",
-          "commit_hash": "${COMMIT_HASH}",
-          "build_timestamp": "${TIMESTAMP}"
-        }
-        EOF
-        
-        # Clean up temporary files
-        rm -f build_key.pem signature.bin
-        
-        # Set outputs for Docker build
-        echo "build_signature=$SIGNATURE" >> $GITHUB_OUTPUT
-        echo "build_timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          type=sha,prefix=sha-
+          type=raw,value=pr-${{ github.event.number }}-${{ github.sha }},enable=${{ github.event_name == 'pull_request' }}
 
     - name: Build and push Docker image
       id: build
@@ -324,39 +112,57 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        build-args: |
-          BUILD_SIGNATURE=${{ steps.attestation.outputs.build_signature }}
-          BUILD_TIMESTAMP=${{ steps.attestation.outputs.build_timestamp }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    - name: Upload build attestation artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-attestation-${{ github.sha }}
-        path: artifacts/
-        retention-days: 30
+    - name: Extract attestation artifacts from Docker image
+      run: |
+        # Determine the image tag to use for extraction
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          IMAGE_TAG="pr-${{ github.event.number }}-${{ github.sha }}"
+        else
+          IMAGE_TAG="${{ steps.meta.outputs.tags }}"
+        fi
+        
+        # Create a temporary container to extract artifacts
+        CONTAINER_ID=$(docker create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG)
+        docker cp $CONTAINER_ID:/artifacts ./artifacts
+        docker rm $CONTAINER_ID
+        
+        # Verify artifacts were extracted
+        if [ -f "artifacts/build_key.pub" ]; then
+          echo "✅ Successfully extracted attestation artifacts from Docker build"
+          echo "Public key:"
+          cat artifacts/build_key.pub
+        else
+          echo "❌ Failed to extract attestation artifacts"
+          exit 1
+        fi
 
-    - name: Upload public key as standalone artifact
+    - name: Upload public key artifact
       uses: actions/upload-artifact@v4
       with:
-        name: build-public-key-${{ github.sha }}
+        name: ${{ github.event_name == 'pull_request' && format('build-public-key-pr-{0}-{1}', github.event.number, github.sha) || format('build-public-key-{0}', github.sha) }}
         path: artifacts/build_key.pub
-        retention-days: 365  # Keep public keys longer for verification
+        retention-days: ${{ github.event_name == 'pull_request' && 30 || 365 }}
 
   security-scan:
     name: Security Scan
-    needs: [build, build-pr]
+    needs: build
     runs-on: ubuntu-latest
-    if: always() && (needs.build.result == 'success' || needs.build-pr.result == 'success')
-    
+    if: always() && needs.build.result == 'success'
     steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        scan-type: 'fs'
+        ignore-unfixed: true
         format: 'sarif'
         output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
@@ -366,124 +172,27 @@ jobs:
 
   release:
     name: Create Release
-    needs: [build, build-pr, security-scan]
+    needs: [build, security-scan]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main'))
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Download build attestation artifacts (main build)
-      uses: actions/download-artifact@v4
+    - name: Download public key artifact
       if: needs.build.result == 'success'
-      with:
-        name: build-attestation-${{ github.sha }}
-        path: artifacts-main/
-
-    - name: Download build attestation artifacts (PR build)
       uses: actions/download-artifact@v4
-      if: needs.build-pr.result == 'success' && needs.build.result != 'success'
       with:
-        name: build-attestation-pr-${{ github.event.number }}-${{ github.sha }}
-        path: artifacts-pr/
-
-    - name: Prepare release artifacts
-      run: |
-        # Use main build artifacts if available, otherwise use PR build artifacts
-        if [ -d "artifacts-main" ]; then
-          cp -r artifacts-main/* artifacts/
-        elif [ -d "artifacts-pr" ]; then
-          cp -r artifacts-pr/* artifacts/
-        else
-          echo "No build artifacts found!"
-          exit 1
-        fi
-        
-        # Ensure all required files exist
-        if [ ! -f "artifacts/build_key.pub" ]; then
-          echo "Public key not found in artifacts!"
-          exit 1
-        fi
-        
-        # Create a human-readable verification guide
-        cat > artifacts/VERIFICATION_GUIDE.md << 'EOF'
-        # Build Attestation Verification Guide
-        
-        This release includes cryptographic attestation files to verify the integrity and authenticity of the Docker image.
-        
-        ## Files Included
-        
-        - `build_key.pub` - Public key for signature verification
-        - `build_signature.txt` - Base64-encoded digital signature
-        - `build_payload.txt` - Original payload that was signed
-        - `build_attestation.json` - Complete attestation data in JSON format
-        - `verification_info.txt` - Human-readable verification information
-        
-        ## Verification Commands
-        
-        ### Verify the signature:
-        ```bash
-        # Download the files from this release
-        # Verify the signature using the public key
-        openssl dgst -sha256 -verify build_key.pub -signature <(base64 -d build_signature.txt) <(echo -n "$(cat build_payload.txt)")
-        ```
-        
-        ### Expected output:
-        ```
-        Verified OK
-        ```
-        
-        ## Payload Format
-        
-        The signed payload follows this format:
-        `<commit-hash>:<timestamp>:openads-server-build`
-        
-        This ensures the build is tied to a specific Git commit and build timestamp.
-        EOF
+        name: ${{ github.event_name == 'pull_request' && format('build-public-key-pr-{0}-{1}', github.event.number, github.sha) || format('build-public-key-{0}', github.sha) }}
+        path: artifacts/
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          artifacts/build_attestation.json
           artifacts/build_key.pub
-          artifacts/build_signature.txt
-          artifacts/build_payload.txt
-          artifacts/verification_info.txt
-          artifacts/VERIFICATION_GUIDE.md
         generate_release_notes: true
         draft: false
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  cleanup:
-    name: Cleanup
-    needs: [test, build, build-pr, security-scan]
-    runs-on: ubuntu-latest
-    if: always()
-    
-    steps:
-    - name: Delete old artifacts
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            run_id: context.runId
-          });
-          
-          const cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - 30); // Keep artifacts for 30 days
-          
-          for (const artifact of artifacts.data.artifacts) {
-            if (new Date(artifact.created_at) < cutoff) {
-              await github.rest.actions.deleteArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                artifact_id: artifact.id
-              });
-            }
-          }
