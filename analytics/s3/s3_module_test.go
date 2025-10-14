@@ -160,6 +160,9 @@ func TestLogAuctionObject_FlushOnSizeThreshold(t *testing.T) {
 		s3Module.LogAuctionObject(ao)
 	}
 
+	// Wait for async processing to complete
+	time.Sleep(100 * time.Millisecond)
+
 	// Should have flushed due to size threshold
 	calls := client.getCalls()
 	assert.Greater(t, len(calls), 0, "should have flushed due to size threshold")
@@ -299,13 +302,27 @@ func TestShutdownFlushing(t *testing.T) {
 	}
 	s3Module.LogVideoObject(vo)
 
+	// Give the goroutines time to process events from channels into buffers
+	time.Sleep(100 * time.Millisecond)
+
 	s3Module.Shutdown()
 
 	// Wait for async uploads to complete (flush spawns goroutines for uploads)
-	time.Sleep(50 * time.Millisecond)
+	// Use polling to wait for all 3 calls to complete
+	maxWait := 5 * time.Second
+	pollInterval := 50 * time.Millisecond
+	start := time.Now()
+
+	var calls []mockS3Call
+	for time.Since(start) < maxWait {
+		calls = client.getCalls()
+		if len(calls) >= 3 {
+			break
+		}
+		time.Sleep(pollInterval)
+	}
 
 	// Should have 3 uploads (one for each event type)
-	calls := client.getCalls()
 	assert.Len(t, calls, 3, "shutdown should flush all 3 event types")
 
 	eventTypes := make(map[string]bool)

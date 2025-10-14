@@ -1,0 +1,251 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [ 'main', 'staging', 'ttd-auction-server-main' ]
+  push:
+    branches: [ 'main', 'staging', 'ttd-auction-server-main' ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: openads-auction/openadsserver
+
+jobs:
+  test:
+    name: Test and Validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.0'
+        cache: true
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: |
+        go mod download
+        go mod verify
+
+    - name: Run validation script
+      run: |
+        chmod +x validate.sh
+        ./validate.sh --cov --race 2
+
+  build:
+    name: Build Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main')) ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'release' ||
+      (github.event_name == 'pull_request' && github.event.action == 'synchronize')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha,prefix=sha-
+          type=raw,value=pr-${{ github.event.number }}-${{ github.sha }},enable=${{ github.event_name == 'pull_request' }}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Extract attestation artifacts from Docker image
+      run: |
+        # Determine the image tag to use for extraction
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          IMAGE_TAG="pr-${{ github.event.number }}-${{ github.sha }}"
+        else
+          IMAGE_TAG="${{ steps.meta.outputs.tags }}"
+        fi
+        
+        # Create a temporary container to extract artifacts
+        CONTAINER_ID=$(docker create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG)
+        docker cp $CONTAINER_ID:/artifacts ./artifacts
+        docker rm $CONTAINER_ID
+        
+        # Verify artifacts were extracted
+        if [ -f "artifacts/build_key.pub" ]; then
+          echo "✅ Successfully extracted attestation artifacts from Docker build"
+          echo "Public key:"
+          cat artifacts/build_key.pub
+        else
+          echo "❌ Failed to extract attestation artifacts"
+          exit 1
+        fi
+
+    - name: Upload public key artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event_name == 'pull_request' && format('build-public-key-pr-{0}-{1}', github.event.number, github.sha) || format('build-public-key-{0}', github.sha) }}
+        path: artifacts/build_key.pub
+        retention-days: ${{ github.event_name == 'pull_request' && 30 || 365 }}
+
+  security-scan:
+    name: Security Scan
+    needs: build
+    runs-on: ubuntu-latest
+    if: always() && needs.build.result == 'success'
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: true
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  release:
+    name: Create Release
+    needs: [build, security-scan]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main'))
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download public key artifact
+      if: needs.build.result == 'success'
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ github.event_name == 'pull_request' && format('build-public-key-pr-{0}-{1}', github.event.number, github.sha) || format('build-public-key-{0}', github.sha) }}
+        path: artifacts/
+
+    - name: Prepare release artifacts
+      run: |
+        # Ensure artifacts directory exists
+        mkdir -p artifacts
+        
+        # Create verification guide
+        cat > artifacts/VERIFICATION_GUIDE.md << 'EOF'
+        # Build Attestation Verification Guide
+        
+        This release includes cryptographic build attestation to verify the integrity and authenticity of the Docker image.
+        
+        ## Files Included
+        
+        - `build_key.pub` - RSA public key used to sign the build
+        - `build_signature.txt` - Base64-encoded signature of the build payload
+        - `build_payload.txt` - The original payload that was signed
+        - `build_attestation.json` - Complete attestation data in JSON format
+        - `verification_info.txt` - Human-readable verification instructions
+        
+        ## Verification Steps
+        
+        1. **Get the attestation data from the running container:**
+           ```bash
+           curl http://localhost:8000/attestation
+           ```
+        
+        2. **Verify the signature:**
+           ```bash
+           # Decode the signature
+           echo "<signature_from_attestation_endpoint>" | base64 -d > signature.bin
+           
+           # Verify using the public key
+           echo -n "<payload_from_attestation_endpoint>" | openssl dgst -sha256 -verify build_key.pub -signature signature.bin
+           ```
+        
+        3. **Expected output:** `Verified OK` if the signature is valid
+        
+        ## Security Notes
+        
+        - The private key used for signing is never stored or transmitted
+        - Each build generates a unique key pair
+        - The signature proves the build was created from the exact commit and timestamp specified
+        - The public key allows anyone to verify the build integrity
+        
+        ## Troubleshooting
+        
+        If verification fails:
+        - Ensure you're using the correct public key from this release's artifacts
+        - Verify the payload format matches: `<commit-hash>:<timestamp>:openads-server-build`
+        - Check that the signature is properly base64 decoded
+        EOF
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/build_key.pub
+          artifacts/VERIFICATION_GUIDE.md
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -726,9 +726,21 @@ func TestShutdownFlush(t *testing.T) {
 
 	go logger.start()
 	logger.LogAuctionObject(&mockValidAuctionObject)
+
 	logger.Shutdown()
 
-	time.Sleep(10 * time.Millisecond)
+	// Wait for async processing to complete
+	maxWait := 5 * time.Second
+	pollInterval := 50 * time.Millisecond
+	start := time.Now()
+
+	for time.Since(start) < maxWait {
+		calls := mockedSender.Calls
+		if len(calls) >= 1 {
+			break
+		}
+		time.Sleep(pollInterval)
+	}
 
 	mockedSender.AssertCalled(t, "Send", mock.Anything)
 	mockedSender.AssertNumberOfCalls(t, "Send", 1)
