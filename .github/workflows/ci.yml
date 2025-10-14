@@ -244,7 +244,6 @@ jobs:
       with:
         files: |
           artifacts/build_key.pub
-          artifacts/VERIFICATION_GUIDE.md
         generate_release_notes: true
         draft: false
         prerelease: false
