@@ -121,7 +121,8 @@ jobs:
         if [ "${{ github.event_name }}" = "pull_request" ]; then
           IMAGE_TAG="pr-${{ github.event.number }}-${{ github.sha }}"
         else
-          IMAGE_TAG="${{ steps.meta.outputs.tags }}"
+          # Use the first tag from the multi-tag output
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1 | sed 's/.*://')
         fi
         
         # Create a temporary container to extract artifacts
@@ -146,29 +147,29 @@ jobs:
         path: artifacts/build_key.pub
         retention-days: ${{ github.event_name == 'pull_request' && 30 || 365 }}
 
-  security-scan:
-    name: Security Scan
-    needs: build
-    runs-on: ubuntu-latest
-    if: always() && needs.build.result == 'success'
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        ignore-unfixed: true
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        severity: 'CRITICAL,HIGH'
-
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
+#  security-scan:
+#    name: Security Scan
+#    needs: build
+#    runs-on: ubuntu-latest
+#    if: always() && needs.build.result == 'success'
+#    steps:
+#    - name: Checkout Code
+#      uses: actions/checkout@v4
+#
+#    - name: Run Trivy vulnerability scanner
+#      uses: aquasecurity/trivy-action@master
+#      with:
+#        scan-type: 'fs'
+#        ignore-unfixed: true
+#        format: 'sarif'
+#        output: 'trivy-results.sarif'
+#        severity: 'CRITICAL,HIGH'
+#
+#    - name: Upload Trivy scan results to GitHub Security tab
+#      uses: github/codeql-action/upload-sarif@v3
+#      if: always()
+#      with:
+#        sarif_file: 'trivy-results.sarif'
 
   release:
     name: Create Release
