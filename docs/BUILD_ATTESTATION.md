@@ -2,7 +2,7 @@
 
 ## Overview
 
-prebid-server includes cryptographic build attestation through the `/attestation` endpoint. This provides cryptographic proof of the build integrity, linking the binary to the exact source code commit and build timestamp.
+OpenAds server includes cryptographic build attestation through the `/attestation` endpoint. This provides cryptographic proof of the build integrity, linking the binary to the exact source code commit and build timestamp.
 
 ## How It Works
 
