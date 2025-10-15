@@ -2,21 +2,9 @@ name: CI/CD Pipeline
 
 on:
   pull_request:
-    branches: [ 'main', 'staging', 'ttd-auction-server-main' ]
+    branches: [ 'main' ]
   push:
-    branches: [ 'main', 'staging', 'ttd-auction-server-main' ]
-  release:
-    types: [ published ]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-        - staging
-        - production
+    branches: [ 'main' ]
 
 permissions:
   contents: read
@@ -31,7 +19,7 @@ jobs:
   test:
     name: Test and Validate
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -69,10 +57,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main')) ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'release' ||
-      (github.event_name == 'pull_request' && github.event.action == 'synchronize')
+      (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) ||
+      (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize'))
+    outputs:
+      version: ${{ steps.version.outputs.tag }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -89,19 +77,28 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Generate version tag
+      id: version
+      run: |
+        SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "tag=pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
+          echo "unique_tag=pr-${{ github.event.number }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+        else
+          CALVER=$(date -u +%Y.%m.%d)-${SHORT_SHA}
+          echo "tag=${CALVER}" >> $GITHUB_OUTPUT
+          echo "unique_tag=${CALVER}" >> $GITHUB_OUTPUT
+        fi
+
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=${{ steps.version.outputs.tag }}
+          type=raw,value=${{ steps.version.outputs.unique_tag }}
           type=raw,value=latest,enable={{is_default_branch}}
-          type=sha,prefix=sha-
-          type=raw,value=pr-${{ github.event.number }}-${{ github.sha }},enable=${{ github.event_name == 'pull_request' }}
 
     - name: Build and push Docker image
       id: build
@@ -117,13 +114,7 @@ jobs:
 
     - name: Extract attestation artifacts from Docker image
       run: |
-        # Determine the image tag to use for extraction
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          IMAGE_TAG="pr-${{ github.event.number }}-${{ github.sha }}"
-        else
-          # Use the first tag from the multi-tag output
-          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1 | sed 's/.*://')
-        fi
+        IMAGE_TAG="${{ steps.version.outputs.unique_tag }}"
         
         # Create a temporary container to extract artifacts
         CONTAINER_ID=$(docker create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG)
@@ -175,7 +166,7 @@ jobs:
     name: Create Release
     needs: [build] #[build, security-scan]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/ttd-auction-server-main'))
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
     permissions:
       contents: write
     steps:
@@ -186,7 +177,7 @@ jobs:
       if: needs.build.result == 'success'
       uses: actions/download-artifact@v4
       with:
-        name: ${{ github.event_name == 'pull_request' && format('build-public-key-pr-{0}-{1}', github.event.number, github.sha) || format('build-public-key-{0}', github.sha) }}
+        name: build-public-key-${{ github.sha }}
         path: artifacts/
 
     - name: Create Release
@@ -196,6 +187,12 @@ jobs:
         generate_release_notes: true
         draft: false
         prerelease: false
-        tag_name: ${{ github.ref_name }}-${{ github.sha }}
-        name: Release ${{ github.ref_name }}-${{ github.sha }}
+        tag_name: ${{ needs.build.outputs.version }}
+        name: Release ${{ needs.build.outputs.version }}
+        body: |
+          ## Docker Image
+          
+          ```bash
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}
+          ```
         token: ${{ secrets.GITHUB_TOKEN }}
