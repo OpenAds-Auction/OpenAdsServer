@@ -134,7 +134,7 @@ jobs:
     - name: Upload public key artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.event_name == 'pull_request' && format('build-public-key-pr-{0}-{1}', github.event.number, github.sha) || format('build-public-key-{0}', github.sha) }}
+        name: build-public-key-${{ github.sha }}
         path: artifacts/build_key.pub
         retention-days: ${{ github.event_name == 'pull_request' && 30 || 365 }}
 
