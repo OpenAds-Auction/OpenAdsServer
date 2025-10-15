@@ -1,5 +1,5 @@
-[![Build](https://img.shields.io/github/actions/workflow/status/prebid/prebid-server/validate.yml?branch=master&style=flat-square)](https://github.com/OpenAds-Auction/OpenAdsServer/actions/workflows/validate.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/prebid/prebid-server?style=flat-square)](https://goreportcard.com/report/github.com/OpenAds-Auction/OpenAdsServer)
+[![Build](https://img.shields.io/github/actions/workflow/status/OpenAds-Auction/OpenAdsServer/ci.yml?branch=main&style=flat-square)](https://github.com/OpenAds-Auction/OpenAdsServer/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/OpenAds-Auction/OpenAdsServer?style=flat-square)](https://goreportcard.com/report/github.com/OpenAds-Auction/OpenAdsServer)
 ![Go Version](https://img.shields.io/github/go-mod/go-version/OpenAds-Auction/OpenAdsServer?style=flat-square)
 
 
