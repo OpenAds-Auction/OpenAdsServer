@@ -211,7 +211,7 @@ func (c *channel) Call(wrapper *openrtb_ext.RequestWrapper) (string, error) {
 		return "", nil
 	}
 	chName := prebid.Channel.Name
-	if chName == "pbjs" {
+	if chName == "pbjs" || chName == "oajs" {
 		return "web", nil
 	}
 	return chName, nil
