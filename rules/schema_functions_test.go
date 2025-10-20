@@ -573,6 +573,16 @@ func TestChannelCall(t *testing.T) {
 			expectedChannelName: "web",
 			expectedError:       nil,
 		},
+		{
+			desc: "success channel name is oajs",
+			inWrapper: &openrtb_ext.RequestWrapper{
+				BidRequest: &openrtb2.BidRequest{
+					Ext: json.RawMessage(`{"prebid":{"channel":{"name":"oajs"}}}`),
+				},
+			},
+			expectedChannelName: "web",
+			expectedError:       nil,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
