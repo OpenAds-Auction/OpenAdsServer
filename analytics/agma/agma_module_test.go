@@ -698,6 +698,7 @@ func TestRaceEnd2End(t *testing.T) {
 
 	assert.Equal(t, expected, actual)
 }
+<<<<<<< HEAD
 
 func TestShutdownFlush(t *testing.T) {
 	cfg := config.AgmaAnalytics{
@@ -745,3 +746,5 @@ func TestShutdownFlush(t *testing.T) {
 	mockedSender.AssertCalled(t, "Send", mock.Anything)
 	mockedSender.AssertNumberOfCalls(t, "Send", 1)
 }
+=======
+>>>>>>> f748b8d8 (Remove flaky agma test (#4578))
