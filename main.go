@@ -18,6 +18,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/spf13/viper"
+	_ "go.uber.org/automaxprocs"
 )
 
 func init() {
