@@ -1,8 +1,8 @@
 FROM ubuntu:22.04 AS build
 
 # Pin package versions for deterministic builds
-ARG GO_VERSION=1.23.0
-ARG GO_CHECKSUM=905a297f19ead44780548933e0ff1a1b86e8327bb459e92f9c0012569f76f5e3
+ARG GO_VERSION=1.25.3
+ARG GO_CHECKSUM=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
 
 # Install system dependencies with pinned versions
 RUN apt-get update && \
