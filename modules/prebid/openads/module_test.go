@@ -91,7 +91,7 @@ func TestHandleBidderRequestHook(t *testing.T) {
 			openAdsVer, exists := openAdsExt.(map[string]interface{})["ver"]
 			require.True(t, exists, "openads.ver should exist")
 
-			openAdsVerValue, exists :=openAdsVer.(string)
+			openAdsVerValue, exists := openAdsVer.(string)
 			require.True(t, exists, "openads.ver should be of type string")
 
 			assert.Equal(t, tt.expectedValue, openAdsVerValue)
@@ -171,10 +171,10 @@ func TestHandleBidderRequestHook_MutationTracking(t *testing.T) {
 	assert.True(t, exists)
 
 	openAdsVer, exists := openAdsExt.(map[string]interface{})["ver"]
-	require.True(t, exists, "openads.ver should exist")
+	require.True(t, exists)
 
-	openAdsVerValue, exists :=openAdsVer.(string)
-	require.True(t, exists, "openads.ver should be of type string")
+	openAdsVerValue, exists := openAdsVer.(string)
+	require.True(t, exists)
 
 	assert.Equal(t, "1", openAdsVerValue)
 }
