@@ -17,6 +17,10 @@ func Builder(rawConfig json.RawMessage, _ moduledeps.ModuleDeps) (interface{}, e
 
 type Module struct{}
 
+type OpenAdsExt struct {
+	Ver string `json:"ver"`
+}
+
 // Utilize bid request hook to add ext.openads to all outgoing requests
 func (m Module) HandleBidderRequestHook(
 	_ context.Context,
@@ -37,7 +41,7 @@ func (m Module) HandleBidderRequestHook(
 		extBytes = []byte("{}")
 	}
 
-	newExt, err := sjson.SetBytes(extBytes, "openads", 1)
+	newExt, err := sjson.SetBytes(extBytes, "openads", OpenAdsExt{Ver: "1"})
 	if err != nil {
 		return hookstage.HookResult[hookstage.BidderRequestPayload]{},
 			fmt.Errorf("failed to set openads field: %w", err)
