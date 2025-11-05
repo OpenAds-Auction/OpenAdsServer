@@ -16,28 +16,28 @@ func TestHandleBidderRequestHook(t *testing.T) {
 	tests := []struct {
 		name          string
 		initialExt    json.RawMessage
-		expectedValue int
+		expectedValue string
 		expectError   bool
 	}{
 		{
 			name:          "add openads to nil ext",
 			initialExt:    nil,
-			expectedValue: 1,
+			expectedValue: "1",
 		},
 		{
 			name:          "add openads to empty ext",
 			initialExt:    json.RawMessage(`{}`),
-			expectedValue: 1,
+			expectedValue: "1",
 		},
 		{
 			name:          "add openads to existing ext",
 			initialExt:    json.RawMessage(`{"prebid": {"debug": true}}`),
-			expectedValue: 1,
+			expectedValue: "1",
 		},
 		{
 			name:          "overwrite existing openads field",
-			initialExt:    json.RawMessage(`{"openads": 0,"prebid": {"debug": true}}`),
-			expectedValue: 1,
+			initialExt:    json.RawMessage(`{"openads": {"ver": "1"},"prebid": {"debug": true}}`),
+			expectedValue: "1",
 		},
 	}
 
@@ -85,17 +85,16 @@ func TestHandleBidderRequestHook(t *testing.T) {
 			err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
 			require.NoError(t, err)
 
-			openValue, exists := extMap["openads"]
-			require.True(t, exists, "open field should exist")
+			openAdsExt, exists := extMap["openads"]
+			require.True(t, exists, "openads obj should exist")
 
-			switch v := openValue.(type) {
-			case int:
-				assert.Equal(t, tt.expectedValue, v)
-			case float64:
-				assert.Equal(t, float64(tt.expectedValue), v)
-			default:
-				t.Errorf("expected open to be int or float64, got %T", v)
-			}
+			openAdsVer, exists := openAdsExt.(map[string]interface{})["ver"]
+			require.True(t, exists, "openads.ver should exist")
+
+			openAdsVerValue, exists :=openAdsVer.(string)
+			require.True(t, exists, "openads.ver should be of type string")
+
+			assert.Equal(t, tt.expectedValue, openAdsVerValue)
 
 			// Verify other fields are preserved if they existed
 			if len(tt.initialExt) > 2 {
@@ -168,7 +167,14 @@ func TestHandleBidderRequestHook_MutationTracking(t *testing.T) {
 	err = json.Unmarshal(modifiedPayload.Request.BidRequest.Ext, &extMap)
 	require.NoError(t, err)
 
-	value, exists := extMap["openads"]
+	openAdsExt, exists := extMap["openads"]
 	assert.True(t, exists)
-	assert.Equal(t, float64(1), value)
+
+	openAdsVer, exists := openAdsExt.(map[string]interface{})["ver"]
+	require.True(t, exists, "openads.ver should exist")
+
+	openAdsVerValue, exists :=openAdsVer.(string)
+	require.True(t, exists, "openads.ver should be of type string")
+
+	assert.Equal(t, "1", openAdsVerValue)
 }
