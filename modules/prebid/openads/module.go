@@ -40,7 +40,7 @@ func (m Module) HandleBidderRequestHook(
 	} else {
 		extBytes = []byte("{}")
 	}
-	
+
 	newExt, err := sjson.SetBytes(extBytes, "openads", OpenAdsExt{Ver: "1"})
 	if err != nil {
 		return hookstage.HookResult[hookstage.BidderRequestPayload]{},
