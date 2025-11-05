@@ -36,7 +36,7 @@ func TestHandleBidderRequestHook(t *testing.T) {
 		},
 		{
 			name:          "overwrite existing openads field",
-			initialExt:    json.RawMessage(`{"openads": {"ver": "1"},"prebid": {"debug": true}}`),
+			initialExt:    json.RawMessage(`{"openads": {"ver": "0"},"prebid": {"debug": true}}`),
 			expectedValue: "1",
 		},
 	}
