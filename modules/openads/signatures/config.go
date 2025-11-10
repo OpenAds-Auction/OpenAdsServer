@@ -49,9 +49,8 @@ func NewConfig(rawConfig json.RawMessage) (*Config, error) {
 		return nil, fmt.Errorf("request_path is required")
 	}
 
-	if !strings.HasPrefix(cfg.RequestPath, "/") {
-		cfg.RequestPath = "/" + cfg.RequestPath
-	}
+	cfg.BasePath = strings.TrimRight(cfg.BasePath, "/")
+	cfg.RequestPath = strings.TrimLeft(cfg.RequestPath, "/")
 
 	return cfg, nil
 }

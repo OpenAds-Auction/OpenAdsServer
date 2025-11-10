@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strings"
 )
 
 type SignatureFetcher interface {
@@ -33,13 +32,11 @@ func newFetcher(cfg *Config) (SignatureFetcher, error) {
 				},
 			},
 		}
-		fetchURL = "http://unix" + cfg.RequestPath
+		fetchURL = "http://unix/" + cfg.RequestPath
 
 	case TransportTCP:
 		client = &http.Client{}
-		base := strings.TrimRight(cfg.BasePath, "/")
-		path := strings.TrimLeft(cfg.RequestPath, "/")
-		fetchURL = base + "/" + path
+		fetchURL = cfg.BasePath + "/" + cfg.RequestPath
 
 	default:
 		return nil, fmt.Errorf("unsupported transport type: %s", cfg.Transport)
