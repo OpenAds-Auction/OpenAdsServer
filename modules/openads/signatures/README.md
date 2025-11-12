@@ -43,6 +43,25 @@ hooks:
 - `hooks.modules.openads.signatures.request_path`: HTTP endpoint path appended to the base_path (e.g., "/controller/test")
 - `hooks.modules.openads.signatures.reject_on_failure`: If `true`, reject bid requests when the external service call fails. If `false`, set openads defaults and continue on
 
+### Request Format
+
+A request is sent to the `{base_path}/{request_path}` endpoint with the following format:
+
+```json
+{
+  "requestBody": {
+    <json from the BidRequest>
+  },
+  "demandSources": ["thetradedesk"]
+}
+```
+
+- `requestBody`: The complete OpenRTB bid request JSON for the specific bidder
+- `demandSources`: An array containing the outgoing bidder code. Currently this will always be 1 bidder.
+
+### Response Format
+
+The external service must return a json array, which will be applied to the outgoing bidrequest (shown below)
 
 ### Output Format
 

@@ -585,8 +585,17 @@ func TestTCPIntegration(t *testing.T) {
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 
+		var envelope signatureRequest
+		err = json.Unmarshal(body, &envelope)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"testbidder"}, envelope.DemandSources)
+
+		requestBodyJSON, err := json.Marshal(envelope.RequestBody)
+		require.NoError(t, err)
+
 		var bidRequest openrtb2.BidRequest
-		err = json.Unmarshal(body, &bidRequest)
+		err = json.Unmarshal(requestBodyJSON, &bidRequest)
 		require.NoError(t, err)
 		assert.Equal(t, "test-request-id", bidRequest.ID)
 
@@ -669,8 +678,17 @@ func TestUDSIntegration(t *testing.T) {
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 
+			var envelope signatureRequest
+			err = json.Unmarshal(body, &envelope)
+			require.NoError(t, err)
+
+			assert.Equal(t, []string{"testbidder"}, envelope.DemandSources)
+
+			requestBodyJSON, err := json.Marshal(envelope.RequestBody)
+			require.NoError(t, err)
+
 			var bidRequest openrtb2.BidRequest
-			err = json.Unmarshal(body, &bidRequest)
+			err = json.Unmarshal(requestBodyJSON, &bidRequest)
 			require.NoError(t, err)
 			assert.Equal(t, "test-request-id", bidRequest.ID)
 

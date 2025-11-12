@@ -19,6 +19,11 @@ type OpenAdsExt struct {
 	IntSigs []interface{} `json:"int_sigs"`
 }
 
+type signatureRequest struct {
+	RequestBody   interface{} `json:"requestBody"`
+	DemandSources []string    `json:"demandSources"`
+}
+
 func Builder(rawConfig json.RawMessage, _ moduledeps.ModuleDeps) (interface{}, error) {
 	cfg, err := NewConfig(rawConfig)
 	if err != nil {
@@ -59,7 +64,12 @@ func (m Module) HandleBidderRequestHook(
 		extBytes = []byte("{}")
 	}
 
-	requestBody, err := json.Marshal(payload.Request.BidRequest)
+	request := signatureRequest{
+		RequestBody:   payload.Request.BidRequest,
+		DemandSources: []string{payload.Bidder},
+	}
+
+	requestBody, err := json.Marshal(request)
 	if err != nil {
 		if m.cfg.RejectOnFailure {
 			result.Reject = true
