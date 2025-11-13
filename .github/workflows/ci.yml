@@ -58,6 +58,7 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+      packages: write
     if: |
       (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) ||
       (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize'))
