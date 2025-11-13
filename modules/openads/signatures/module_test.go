@@ -21,11 +21,11 @@ import (
 )
 
 type mockFetcher struct {
-	response []interface{}
+	response []SignatureWrapper
 	err      error
 }
 
-func (m *mockFetcher) Fetch(ctx context.Context, body []byte) ([]interface{}, error) {
+func (m *mockFetcher) Fetch(ctx context.Context, body []byte) ([]SignatureWrapper, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -148,29 +148,66 @@ func TestBuilder(t *testing.T) {
 
 func TestHandleBidderRequestHook_Success(t *testing.T) {
 	tests := []struct {
-		name         string
-		initialExt   json.RawMessage
-		mockResponse []interface{}
+		name        string
+		initialExt  json.RawMessage
+		mockResponse []SignatureWrapper
+		expectedSig Signature
 	}{
 		{
-			name:         "add int_sigs to nil ext",
-			initialExt:   nil,
-			mockResponse: []interface{}{"signature-1", "signature-2", "signature-3"},
+			name:       "add int_sigs to nil ext",
+			initialExt: nil,
+			mockResponse: []SignatureWrapper{
+				{Name: "testbidder", SIS: Signature{Envelope: "test-envelope", Source: "thetradedesk.com"}},
+			},
+			expectedSig: Signature{
+				Envelope: "test-envelope",
+				Source:   "thetradedesk.com",
+			},
 		},
 		{
-			name:         "add int_sigs to empty ext",
-			initialExt:   json.RawMessage(`{}`),
-			mockResponse: []interface{}{"signature-1"},
+			name:       "add int_sigs to empty ext",
+			initialExt: json.RawMessage(`{}`),
+			mockResponse: []SignatureWrapper{
+				{Name: "testbidder", SIS: Signature{Envelope: "envelope-1", Source: "source-1"}},
+			},
+			expectedSig: Signature{
+				Envelope: "envelope-1",
+				Source:   "source-1",
+			},
 		},
 		{
-			name:         "add int_sigs to existing ext",
-			initialExt:   json.RawMessage(`{"prebid": {"debug": true}}`),
-			mockResponse: []interface{}{"signature-1"},
+			name:       "add int_sigs to existing ext",
+			initialExt: json.RawMessage(`{"prebid": {"debug": true}}`),
+			mockResponse: []SignatureWrapper{
+				{Name: "testbidder", SIS: Signature{Envelope: "envelope-2", Source: "source-2"}},
+			},
+			expectedSig: Signature{
+				Envelope: "envelope-2",
+				Source:   "source-2",
+			},
 		},
 		{
-			name:         "replace openads with int_sigs",
-			initialExt:   json.RawMessage(`{"openads": 1, "prebid": {"debug": true}}`),
-			mockResponse: []interface{}{"signature-1"},
+			name:       "replace openads with int_sigs",
+			initialExt: json.RawMessage(`{"openads": 1, "prebid": {"debug": true}}`),
+			mockResponse: []SignatureWrapper{
+				{Name: "testbidder", SIS: Signature{Envelope: "envelope-3", Source: "source-3"}},
+			},
+			expectedSig: Signature{
+				Envelope: "envelope-3",
+				Source:   "source-3",
+			},
+		},
+		{
+			name:       "ignore extra demand sources",
+			initialExt: json.RawMessage(`{}`),
+			mockResponse: []SignatureWrapper{
+				{Name: "testbidder", SIS: Signature{Envelope: "test-envelope", Source: "thetradedesk.com"}},
+				{Name: "casale", SIS: Signature{Envelope: "extra-envelope", Source: "extra-source"}},
+			},
+			expectedSig: Signature{
+				Envelope: "test-envelope",
+				Source:   "thetradedesk.com",
+			},
 		},
 	}
 
@@ -225,28 +262,141 @@ func TestHandleBidderRequestHook_Success(t *testing.T) {
 			require.NoError(t, finalPayload.Request.RebuildRequest())
 
 			// Verify openads field was added
-			var extMap map[string]interface{}
+			var extMap map[string]json.RawMessage
 			err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
 			require.NoError(t, err)
 
-			expected := map[string]interface{}{
-				"version":  float64(SchemaVersion),
-				"int_sigs": tt.mockResponse,
-			}
-			assert.Equal(t, expected, extMap["openads"])
+			var openadsExt OpenAdsExt
+			err = json.Unmarshal(extMap["openads"], &openadsExt)
+			require.NoError(t, err)
+
+			assert.Equal(t, SchemaVersion, openadsExt.Version)
+			require.Len(t, openadsExt.IntSigs, 1)
+			assert.Equal(t, tt.expectedSig, openadsExt.IntSigs[0])
 
 			// Verify other fields are preserved if they existed
 			if len(tt.initialExt) > 2 {
-				var originalExt map[string]interface{}
+				var originalExt map[string]json.RawMessage
 				json.Unmarshal(tt.initialExt, &originalExt)
 
-				for key, expectedValue := range originalExt {
+				for key := range originalExt {
 					if key != "openads" {
-						actualValue, exists := extMap[key]
+						_, exists := extMap[key]
 						assert.True(t, exists, "existing field %s should be preserved", key)
-						assert.Equal(t, expectedValue, actualValue)
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestHandleBidderRequestHook_MissingDemandSource(t *testing.T) {
+	tests := []struct {
+		name            string
+		mockResponse    []SignatureWrapper
+		rejectOnFailure bool
+		expectReject    bool
+		expectErr       string
+	}{
+		{
+			name: "missing demandSource - soft mode",
+			mockResponse: []SignatureWrapper{
+				{Name: "other-bidder", SIS: Signature{Envelope: "envelope", Source: "source"}},
+			},
+			rejectOnFailure: false,
+			expectReject:    false,
+			expectErr:       "missing demandSources in sidecar response: [testbidder]",
+		},
+		{
+			name: "missing demandSource - reject mode",
+			mockResponse: []SignatureWrapper{
+				{Name: "other-bidder", SIS: Signature{Envelope: "envelope", Source: "source"}},
+			},
+			rejectOnFailure: true,
+			expectReject:    true,
+			expectErr:       "missing demandSources in sidecar response: [testbidder]",
+		},
+		{
+			name:            "empty response - soft mode",
+			mockResponse:    []SignatureWrapper{},
+			rejectOnFailure: false,
+			expectReject:    false,
+			expectErr:       "missing demandSources in sidecar response: [testbidder]",
+		},
+		{
+			name:            "empty response - reject mode",
+			mockResponse:    []SignatureWrapper{},
+			rejectOnFailure: true,
+			expectReject:    true,
+			expectErr:       "missing demandSources in sidecar response: [testbidder]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			module := Module{
+				cfg: &Config{
+					Transport:       TransportUDS,
+					BasePath:        "/test.sock",
+					RequestPath:     "/test",
+					RejectOnFailure: tt.rejectOnFailure,
+					Version:         SchemaVersion,
+				},
+				fetcher: &mockFetcher{
+					response: tt.mockResponse,
+					err:      nil,
+				},
+			}
+
+			bidRequest := &openrtb2.BidRequest{
+				ID:  "test-request",
+				Ext: json.RawMessage(`{"prebid": {"debug": true}}`),
+			}
+
+			requestWrapper := &openrtb_ext.RequestWrapper{BidRequest: bidRequest}
+
+			payload := hookstage.BidderRequestPayload{
+				Request: requestWrapper,
+				Bidder:  "testbidder",
+			}
+
+			result, err := module.HandleBidderRequestHook(
+				context.Background(),
+				hookstage.ModuleInvocationContext{},
+				payload,
+			)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectErr)
+			assert.Equal(t, tt.expectReject, result.Reject)
+
+			if tt.expectReject {
+				assert.Equal(t, NbrCodeServiceUnavailable, result.NbrCode)
+				assert.Len(t, result.ChangeSet.Mutations(), 0)
+			} else {
+				assert.Equal(t, 0, result.NbrCode)
+				// Should still set openads with empty int_sigs
+				mutations := result.ChangeSet.Mutations()
+				assert.Len(t, mutations, 1, "should have one mutation for soft-fail")
+
+				finalPayload := payload
+				for _, mutation := range mutations {
+					finalPayload, err = mutation.Apply(finalPayload)
+					require.NoError(t, err)
+				}
+
+				require.NoError(t, finalPayload.Request.RebuildRequest())
+
+				var extMap map[string]json.RawMessage
+				err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
+				require.NoError(t, err)
+
+				var openadsExt OpenAdsExt
+				err = json.Unmarshal(extMap["openads"], &openadsExt)
+				require.NoError(t, err)
+
+				assert.Equal(t, SchemaVersion, openadsExt.Version)
+				assert.Empty(t, openadsExt.IntSigs)
 			}
 		})
 	}
@@ -327,19 +477,22 @@ func TestHandleBidderRequestHook_FailureSoftMode(t *testing.T) {
 			require.NoError(t, finalPayload.Request.RebuildRequest())
 
 			// Verify openads field was added with version and empty int_sigs
-			var extMap map[string]interface{}
+			var extMap map[string]json.RawMessage
 			err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
 			require.NoError(t, err)
 
-			expected := map[string]interface{}{
-				"version":  float64(SchemaVersion),
-				"int_sigs": []interface{}{},
-			}
-			assert.Equal(t, expected, extMap["openads"])
+			var openadsExt OpenAdsExt
+			err = json.Unmarshal(extMap["openads"], &openadsExt)
+			require.NoError(t, err)
+
+			assert.Equal(t, SchemaVersion, openadsExt.Version)
+			assert.Empty(t, openadsExt.IntSigs)
 
 			// Verify other fields are preserved
-			prebidMap := extMap["prebid"].(map[string]interface{})
-			assert.Equal(t, true, prebidMap["debug"])
+			var prebidExt map[string]interface{}
+			err = json.Unmarshal(extMap["prebid"], &prebidExt)
+			require.NoError(t, err)
+			assert.Equal(t, true, prebidExt["debug"])
 		})
 	}
 }
@@ -425,7 +578,7 @@ func TestHandleBidderRequestHook_NilRequest(t *testing.T) {
 			Version:         SchemaVersion,
 		},
 		fetcher: &mockFetcher{
-			response: []interface{}{},
+			response: []SignatureWrapper{},
 			err:      nil,
 		},
 	}
@@ -456,8 +609,10 @@ func TestHandleBidderRequestHook_MutationTracking(t *testing.T) {
 			Version:         SchemaVersion,
 		},
 		fetcher: &mockFetcher{
-			response: []interface{}{"test-signature"},
-			err:      nil,
+			response: []SignatureWrapper{
+				{Name: "testbidder", SIS: Signature{Envelope: "test-signature", Source: "test-source"}},
+			},
+			err: nil,
 		},
 	}
 
@@ -493,15 +648,22 @@ func TestHandleBidderRequestHook_MutationTracking(t *testing.T) {
 	require.NoError(t, modifiedPayload.Request.RebuildRequest())
 
 	// Verify the mutation actually worked
-	var extMap map[string]interface{}
+	var extMap map[string]json.RawMessage
 	err = json.Unmarshal(modifiedPayload.Request.BidRequest.Ext, &extMap)
 	require.NoError(t, err)
 
-	expected := map[string]interface{}{
-		"version":  float64(SchemaVersion),
-		"int_sigs": []interface{}{"test-signature"},
+	var openadsExt OpenAdsExt
+	err = json.Unmarshal(extMap["openads"], &openadsExt)
+	require.NoError(t, err)
+
+	assert.Equal(t, SchemaVersion, openadsExt.Version)
+	require.Len(t, openadsExt.IntSigs, 1)
+	
+	expectedSig := Signature{
+		Envelope: "test-signature",
+		Source:   "test-source",
 	}
-	assert.Equal(t, expected, extMap["openads"])
+	assert.Equal(t, expectedSig, openadsExt.IntSigs[0])
 }
 
 func TestHandleBidderRequestHook_InvalidJSONResponse(t *testing.T) {
@@ -606,7 +768,10 @@ func TestTCPIntegration(t *testing.T) {
 		assert.Equal(t, "test-request-id", bidRequest.ID)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`["sig-1", "sig-2"]`))
+		response := []SignatureWrapper{
+			{Name: "testbidder", SIS: Signature{Envelope: "sig-1", Source: "source-1"}},
+		}
+		json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -657,15 +822,22 @@ func TestTCPIntegration(t *testing.T) {
 
 	require.NoError(t, finalPayload.Request.RebuildRequest())
 
-	var extMap map[string]interface{}
+	var extMap map[string]json.RawMessage
 	err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
 	require.NoError(t, err)
 
-	expected := map[string]interface{}{
-		"version":  float64(SchemaVersion),
-		"int_sigs": []interface{}{"sig-1", "sig-2"},
+	var openadsExt OpenAdsExt
+	err = json.Unmarshal(extMap["openads"], &openadsExt)
+	require.NoError(t, err)
+
+	assert.Equal(t, SchemaVersion, openadsExt.Version)
+	require.Len(t, openadsExt.IntSigs, 1)
+	
+	expectedSig := Signature{
+		Envelope: "sig-1",
+		Source:   "source-1",
 	}
-	assert.Equal(t, expected, extMap["openads"])
+	assert.Equal(t, expectedSig, openadsExt.IntSigs[0])
 }
 
 func TestUDSIntegration(t *testing.T) {
@@ -701,7 +873,10 @@ func TestUDSIntegration(t *testing.T) {
 			assert.Equal(t, "test-request-id", bidRequest.ID)
 
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`["sig-1", "sig-2"]`))
+			response := []SignatureWrapper{
+				{Name: "testbidder", SIS: Signature{Envelope: "sig-1", Source: "source-1"}},
+			}
+			json.NewEncoder(w).Encode(response)
 		}),
 	}
 
@@ -753,14 +928,21 @@ func TestUDSIntegration(t *testing.T) {
 
 	require.NoError(t, finalPayload.Request.RebuildRequest())
 
-	var extMap map[string]interface{}
+	var extMap map[string]json.RawMessage
 	err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
 	require.NoError(t, err)
 
-	expected := map[string]interface{}{
-		"version":  float64(SchemaVersion),
-		"int_sigs": []interface{}{"sig-1", "sig-2"},
+	var openadsExt OpenAdsExt
+	err = json.Unmarshal(extMap["openads"], &openadsExt)
+	require.NoError(t, err)
+
+	assert.Equal(t, SchemaVersion, openadsExt.Version)
+	require.Len(t, openadsExt.IntSigs, 1)
+	
+	expectedSig := Signature{
+		Envelope: "sig-1",
+		Source:   "source-1",
 	}
-	assert.Equal(t, expected, extMap["openads"])
-	assert.NotNil(t, extMap["prebid"])
+	assert.Equal(t, expectedSig, openadsExt.IntSigs[0])
+	assert.NotEmpty(t, extMap["prebid"])
 }

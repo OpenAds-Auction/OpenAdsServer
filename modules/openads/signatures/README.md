@@ -61,11 +61,30 @@ A request is sent to the `{base_path}/{request_path}` endpoint with the followin
 
 ### Response Format
 
-The external service must return a json array, which will be applied to the outgoing bidrequest (shown below)
+The external service must return a JSON array of objects with the following structure:
+
+```json
+[
+  { 
+    "name": "thetradedesk",
+    "sis": {
+      "envelope": "stub-signature-value",
+      "source": "thetradedesk.com"
+    }
+  },
+  { 
+    "name": "someotherbidder",
+    "sis": {
+      "envelope": "stub-signature-value",
+      "source": "thetradedesk.com"
+    }
+  }
+]
+```
 
 ### Output Format
 
-The module adds an `openads` object to the bid request's `ext` field:
+The module adds an `openads` object to the bid request's `ext` field with the filtered `sis` objects:
 
 ```json
 {
@@ -73,7 +92,10 @@ The module adds an `openads` object to the bid request's `ext` field:
     "openads": {
       "version": 1,
       "int_sigs": [
-        // some data
+        {
+          "envelope": "stub-signature",
+          "source": "thetradedesk.com"
+        }
       ]
     }
   }

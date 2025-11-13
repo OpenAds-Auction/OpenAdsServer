@@ -10,8 +10,18 @@ import (
 	"net/http"
 )
 
+type Signature struct {
+	Envelope string `json:"envelope"`
+	Source   string `json:"source"`
+}
+
+type SignatureWrapper struct {
+	Name string    `json:"name"`
+	SIS  Signature `json:"sis"`
+}
+
 type SignatureFetcher interface {
-	Fetch(ctx context.Context, body []byte) ([]interface{}, error)
+	Fetch(ctx context.Context, body []byte) ([]SignatureWrapper, error)
 }
 
 type httpFetcher struct {
@@ -48,7 +58,7 @@ func newFetcher(cfg *Config) (SignatureFetcher, error) {
 	}, nil
 }
 
-func (f *httpFetcher) Fetch(ctx context.Context, body []byte) ([]interface{}, error) {
+func (f *httpFetcher) Fetch(ctx context.Context, body []byte) ([]SignatureWrapper, error) {
 	req, err := http.NewRequestWithContext(ctx, "POST", f.url, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -75,8 +85,7 @@ func (f *httpFetcher) Fetch(ctx context.Context, body []byte) ([]interface{}, er
 		return nil, fmt.Errorf("empty response body")
 	}
 
-	// currently letting any valid json through
-	var signatures []interface{}
+	var signatures []SignatureWrapper
 	if err := json.Unmarshal(respBody, &signatures); err != nil {
 		return nil, fmt.Errorf("invalid JSON from signature service: %w", err)
 	}

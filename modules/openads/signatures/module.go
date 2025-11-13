@@ -15,8 +15,8 @@ const (
 )
 
 type OpenAdsExt struct {
-	Version int           `json:"version"`
-	IntSigs []interface{} `json:"int_sigs"`
+	Version int         `json:"version"`
+	IntSigs []Signature `json:"int_sigs"`
 }
 
 type signatureRequest struct {
@@ -69,7 +69,7 @@ func (m Module) HandleBidderRequestHook(
 			result.NbrCode = NbrCodeServiceUnavailable
 			return result, hookexecution.NewFailure("failed to marshal bid request: %v", err)
 		}
-		return m.setOpenAdsExt([]interface{}{}, result, hookexecution.NewFailure("failed to marshal bid request: %v", err))
+		return m.setOpenAdsExt([]Signature{}, result, hookexecution.NewFailure("failed to marshal bid request: %v", err))
 	}
 
 	signatures, err := m.fetcher.Fetch(ctx, requestBody)
@@ -79,14 +79,40 @@ func (m Module) HandleBidderRequestHook(
 			result.NbrCode = NbrCodeServiceUnavailable
 			return result, hookexecution.NewFailure("sidecar fetch: %v", err)
 		}
-		return m.setOpenAdsExt([]interface{}{}, result, hookexecution.NewFailure("sidecar fetch: %v", err))
+		return m.setOpenAdsExt([]Signature{}, result, hookexecution.NewFailure("sidecar fetch: %v", err))
 	}
 
-	return m.setOpenAdsExt(signatures, result, nil)
+	signaturesByName := make(map[string]Signature)
+	for _, item := range signatures {
+		signaturesByName[item.Name] = item.SIS
+	}
+
+	// Filter to only requested demandSources and collect their sis objects
+	intSigs := make([]Signature, 0, len(request.DemandSources))
+	var missingDemandSources []string
+	for _, ds := range request.DemandSources {
+		if sis, found := signaturesByName[ds]; found {
+			intSigs = append(intSigs, sis)
+		} else {
+			missingDemandSources = append(missingDemandSources, ds)
+		}
+	}
+
+	// If any requested demandSource is missing, treat as failure
+	if len(missingDemandSources) > 0 {
+		if m.cfg.RejectOnFailure {
+			result.Reject = true
+			result.NbrCode = NbrCodeServiceUnavailable
+			return result, hookexecution.NewFailure("missing demandSources in sidecar response: %v", missingDemandSources)
+		}
+		return m.setOpenAdsExt([]Signature{}, result, hookexecution.NewFailure("missing demandSources in sidecar response: %v", missingDemandSources))
+	}
+
+	return m.setOpenAdsExt(intSigs, result, nil)
 }
 
 func (m Module) setOpenAdsExt(
-	signatures []interface{},
+	signatures []Signature,
 	result hookstage.HookResult[hookstage.BidderRequestPayload],
 	hookErr error,
 ) (hookstage.HookResult[hookstage.BidderRequestPayload], error) {
