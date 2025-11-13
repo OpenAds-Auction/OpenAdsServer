@@ -2,7 +2,7 @@ package modules
 
 import (
 	fiftyonedegreesDevicedetection "github.com/prebid/prebid-server/v3/modules/fiftyonedegrees/devicedetection"
-	prebidOpenads "github.com/prebid/prebid-server/v3/modules/prebid/openads"
+	openadsSignatures "github.com/prebid/prebid-server/v3/modules/openads/signatures"
 	prebidOrtb2blocking "github.com/prebid/prebid-server/v3/modules/prebid/ortb2blocking"
 	prebidRulesengine "github.com/prebid/prebid-server/v3/modules/prebid/rulesengine"
 )
@@ -14,8 +14,10 @@ func builders() ModuleBuilders {
 		"fiftyonedegrees": {
 			"devicedetection": fiftyonedegreesDevicedetection.Builder,
 		},
+		"openads": {
+			"signatures": openadsSignatures.Builder,
+		},
 		"prebid": {
-			"openads":       prebidOpenads.Builder,
 			"ortb2blocking": prebidOrtb2blocking.Builder,
 			"rulesengine":   prebidRulesengine.Builder,
 		},
