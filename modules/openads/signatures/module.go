@@ -7,11 +7,11 @@ import (
 	"github.com/prebid/prebid-server/v3/hooks/hookexecution"
 	"github.com/prebid/prebid-server/v3/hooks/hookstage"
 	"github.com/prebid/prebid-server/v3/modules/moduledeps"
-	"github.com/tidwall/sjson"
 )
 
 const (
 	NbrCodeServiceUnavailable = 100
+	OpenAdsExtKey             = "openads"
 )
 
 type OpenAdsExt struct {
@@ -57,13 +57,6 @@ func (m Module) HandleBidderRequestHook(
 		return result, hookexecution.NewFailure("payload contains a nil bid request")
 	}
 
-	var extBytes []byte
-	if payload.Request.BidRequest.Ext != nil {
-		extBytes = payload.Request.BidRequest.Ext
-	} else {
-		extBytes = []byte("{}")
-	}
-
 	request := signatureRequest{
 		RequestBody:   payload.Request.BidRequest,
 		DemandSources: []string{payload.Bidder},
@@ -76,7 +69,7 @@ func (m Module) HandleBidderRequestHook(
 			result.NbrCode = NbrCodeServiceUnavailable
 			return result, hookexecution.NewFailure("failed to marshal bid request: %v", err)
 		}
-		return m.setOpenAdsExt(extBytes, []interface{}{}, result, hookexecution.NewFailure("failed to marshal bid request: %v", err))
+		return m.setOpenAdsExt([]interface{}{}, result, hookexecution.NewFailure("failed to marshal bid request: %v", err))
 	}
 
 	signatures, err := m.fetcher.Fetch(ctx, requestBody)
@@ -86,14 +79,13 @@ func (m Module) HandleBidderRequestHook(
 			result.NbrCode = NbrCodeServiceUnavailable
 			return result, hookexecution.NewFailure("sidecar fetch: %v", err)
 		}
-		return m.setOpenAdsExt(extBytes, []interface{}{}, result, hookexecution.NewFailure("sidecar fetch: %v", err))
+		return m.setOpenAdsExt([]interface{}{}, result, hookexecution.NewFailure("sidecar fetch: %v", err))
 	}
 
-	return m.setOpenAdsExt(extBytes, signatures, result, nil)
+	return m.setOpenAdsExt(signatures, result, nil)
 }
 
 func (m Module) setOpenAdsExt(
-	extBytes []byte,
 	signatures []interface{},
 	result hookstage.HookResult[hookstage.BidderRequestPayload],
 	hookErr error,
@@ -103,18 +95,26 @@ func (m Module) setOpenAdsExt(
 		IntSigs: signatures,
 	}
 
-	newExt, err := sjson.SetBytes(extBytes, "openads", openadsExt)
+	openadsJSON, err := json.Marshal(openadsExt)
 	if err != nil {
 		if m.cfg.RejectOnFailure {
 			result.Reject = true
 			result.NbrCode = NbrCodeServiceUnavailable
 		}
-		return result, hookexecution.NewFailure("failed to set ext.openads: %v", err)
+		return result, hookexecution.NewFailure("failed to marshal ext.openads: %v", err)
 	}
 
-	result.ChangeSet.AddMutation(func(payload hookstage.BidderRequestPayload) (hookstage.BidderRequestPayload, error) {
-		payload.Request.BidRequest.Ext = newExt
-		return payload, nil
+	result.ChangeSet.AddMutation(func(p hookstage.BidderRequestPayload) (hookstage.BidderRequestPayload, error) {
+		reqExt, err := p.Request.GetRequestExt()
+		if err != nil {
+			return p, err
+		}
+
+		extMap := reqExt.GetExt()
+		extMap[OpenAdsExtKey] = openadsJSON
+		reqExt.SetExt(extMap)
+
+		return p, nil
 	}, hookstage.MutationUpdate, "bidrequest", "ext.openads")
 
 	return result, hookErr

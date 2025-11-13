@@ -222,6 +222,8 @@ func TestHandleBidderRequestHook_Success(t *testing.T) {
 				require.NoError(t, err)
 			}
 
+			require.NoError(t, finalPayload.Request.RebuildRequest())
+
 			// Verify openads field was added
 			var extMap map[string]interface{}
 			err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
@@ -321,6 +323,8 @@ func TestHandleBidderRequestHook_FailureSoftMode(t *testing.T) {
 				finalPayload, err = mutation.Apply(finalPayload)
 				require.NoError(t, err)
 			}
+
+			require.NoError(t, finalPayload.Request.RebuildRequest())
 
 			// Verify openads field was added with version and empty int_sigs
 			var extMap map[string]interface{}
@@ -486,6 +490,8 @@ func TestHandleBidderRequestHook_MutationTracking(t *testing.T) {
 	modifiedPayload, err := mutation.Apply(payload)
 	require.NoError(t, err)
 
+	require.NoError(t, modifiedPayload.Request.RebuildRequest())
+
 	// Verify the mutation actually worked
 	var extMap map[string]interface{}
 	err = json.Unmarshal(modifiedPayload.Request.BidRequest.Ext, &extMap)
@@ -649,6 +655,8 @@ func TestTCPIntegration(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	require.NoError(t, finalPayload.Request.RebuildRequest())
+
 	var extMap map[string]interface{}
 	err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
 	require.NoError(t, err)
@@ -742,6 +750,8 @@ func TestUDSIntegration(t *testing.T) {
 		finalPayload, err = mutation.Apply(finalPayload)
 		require.NoError(t, err)
 	}
+
+	require.NoError(t, finalPayload.Request.RebuildRequest())
 
 	var extMap map[string]interface{}
 	err = json.Unmarshal(finalPayload.Request.BidRequest.Ext, &extMap)
