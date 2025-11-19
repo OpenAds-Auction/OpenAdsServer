@@ -22,6 +22,12 @@ type EndpointTemplateParams struct {
 	SspID       string
 	SeatID      string
 	TokenID     string
+<<<<<<< HEAD
+=======
+	PartnerId   string
+	Region      string
+	PlacementID string
+>>>>>>> c9b63e1b (New Adapter: Clydo (#4535))
 }
 
 // UserSyncPrivacy specifies privacy policy macros, represented as strings, for user sync urls.
