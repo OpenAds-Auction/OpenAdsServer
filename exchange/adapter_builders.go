@@ -163,6 +163,11 @@ import (
 	"github.com/prebid/prebid-server/v3/adapters/mobilefuse"
 	"github.com/prebid/prebid-server/v3/adapters/mobkoi"
 	"github.com/prebid/prebid-server/v3/adapters/motorik"
+<<<<<<< HEAD
+=======
+	"github.com/prebid/prebid-server/v3/adapters/msft"
+	"github.com/prebid/prebid-server/v3/adapters/nativery"
+>>>>>>> be0a6b21 (New Adapter: Microsoft (msft) (#4592))
 	"github.com/prebid/prebid-server/v3/adapters/nativo"
 	"github.com/prebid/prebid-server/v3/adapters/nextmillennium"
 	"github.com/prebid/prebid-server/v3/adapters/nexx360"
@@ -423,6 +428,7 @@ func newAdapterBuilders() map[openrtb_ext.BidderName]adapters.Builder {
 		openrtb_ext.BidderMetaX:             metax.Builder,
 		openrtb_ext.BidderMgid:              mgid.Builder,
 		openrtb_ext.BidderMgidX:             mgidX.Builder,
+		openrtb_ext.BidderMicrosoft:         msft.Builder,
 		openrtb_ext.BidderMinuteMedia:       minutemedia.Builder,
 		openrtb_ext.BidderMissena:           missena.Builder,
 		openrtb_ext.BidderMobfoxpb:          mobfoxpb.Builder,
