@@ -10,8 +10,12 @@
     },
     "placement": {
       "type": "string",
+<<<<<<< HEAD
       "description": "Refers to the placement of an adunit in a page. Must not contain any information about the type of device.",
       "maxLength": 30
+=======
+      "description": "Refers to the placement of an adunit in a page. See Adagio recommended values: https://prebid.org/dev-docs/bidders/adagio.html#recommended-placement-param-values."
+>>>>>>> 42a25c19 (Adagio: Enable site capability (#4590))
     },
     "site": {
       "type": "string",
