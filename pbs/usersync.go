@@ -9,10 +9,13 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-server/v3/config"
+<<<<<<< HEAD
 	"github.com/prebid/prebid-server/v3/server/ssl"
+=======
+	"github.com/prebid/prebid-server/v3/logger"
+>>>>>>> f358e247 (Logging: Add interface with default glog implementation (#4085))
 	"github.com/prebid/prebid-server/v3/usersync"
 )
 
@@ -50,7 +53,7 @@ func (deps *UserSyncDeps) VerifyRecaptcha(response string) error {
 		// read the entire response body to ensure full connection reuse if there's an
 		// error while decoding the json
 		if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-			glog.Errorf("Captcha verify draining response body failed: %v", err)
+			logger.Errorf("Captcha verify draining response body failed: %v", err)
 		}
 		resp.Body.Close()
 	}()
@@ -78,9 +81,7 @@ func (deps *UserSyncDeps) OptOut(w http.ResponseWriter, r *http.Request, _ httpr
 
 	err := deps.VerifyRecaptcha(rr)
 	if err != nil {
-		if glog.V(2) {
-			glog.Infof("Opt Out failed recaptcha: %v", err)
-		}
+		logger.Infof("Opt Out failed recaptcha: %v", err)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
