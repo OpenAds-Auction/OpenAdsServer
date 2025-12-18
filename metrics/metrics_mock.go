@@ -246,3 +246,15 @@ func (me *MetricsEngineMock) RecordConnectionGot() {
 func (me *MetricsEngineMock) RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus) {
 	me.Called(destination, status)
 }
+
+func (me *MetricsEngineMock) RecordAuctionAudit(action AuctionAuditAction, account string) {
+	me.Called(action, account)
+}
+
+func (me *MetricsEngineMock) RecordAuctionAuditError(reason AuctionAuditErrorReason) {
+	me.Called(reason)
+}
+
+func (me *MetricsEngineMock) RecordAuctionAuditActiveFilters(count int) {
+	me.Called(count)
+}

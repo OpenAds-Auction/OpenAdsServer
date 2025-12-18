@@ -7,6 +7,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/v3/analytics"
 	"github.com/prebid/prebid-server/v3/analytics/agma"
+	"github.com/prebid/prebid-server/v3/analytics/auctionaudit"
 	"github.com/prebid/prebid-server/v3/analytics/clients"
 	"github.com/prebid/prebid-server/v3/analytics/filesystem"
 	"github.com/prebid/prebid-server/v3/analytics/pubstack"
@@ -69,6 +70,16 @@ func New(analytics *config.Analytics, metricsEngine metrics.MetricsEngine) analy
 			} else {
 				glog.Errorf("Could not initialize S3 Analytics: %v", err)
 			}
+		}
+	}
+
+	if analytics.AuctionAudit.Enabled {
+		auditModule, err := auctionaudit.NewModule(analytics.AuctionAudit, metricsEngine)
+		if err == nil {
+			modules["auctionaudit"] = auditModule
+		} else {
+			metricsEngine.RecordAuctionAuditError(metrics.AuctionAuditErrorStartup)
+			glog.Errorf("Could not initialize Auction Audit Analytics: %v", err)
 		}
 	}
 

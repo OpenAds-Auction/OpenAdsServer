@@ -490,6 +490,46 @@ func S3UploadStatuses() []S3UploadStatus {
 	}
 }
 
+// AuctionAuditAction is an action type for auction audit analytics.
+type AuctionAuditAction string
+
+const (
+	AuctionAuditFilterRegistered AuctionAuditAction = "filter_registered"
+	AuctionAuditFilterExpired    AuctionAuditAction = "filter_expired"
+	AuctionAuditEventMatched     AuctionAuditAction = "event_matched"
+)
+
+// AuctionAuditActions returns possible auction audit actions.
+func AuctionAuditActions() []AuctionAuditAction {
+	return []AuctionAuditAction{
+		AuctionAuditFilterRegistered,
+		AuctionAuditFilterExpired,
+		AuctionAuditEventMatched,
+	}
+}
+
+// AuctionAuditErrorReason is a reason type for auction audit errors.
+type AuctionAuditErrorReason string
+
+const (
+	AuctionAuditErrorConnection AuctionAuditErrorReason = "connection"
+	AuctionAuditErrorConsume    AuctionAuditErrorReason = "consume"
+	AuctionAuditErrorProduce    AuctionAuditErrorReason = "produce"
+	AuctionAuditErrorStartup    AuctionAuditErrorReason = "startup"
+	AuctionAuditErrorSend       AuctionAuditErrorReason = "send"
+)
+
+// AuctionAuditErrorReasons returns possible auction audit error reasons.
+func AuctionAuditErrorReasons() []AuctionAuditErrorReason {
+	return []AuctionAuditErrorReason{
+		AuctionAuditErrorConnection,
+		AuctionAuditErrorConsume,
+		AuctionAuditErrorProduce,
+		AuctionAuditErrorStartup,
+		AuctionAuditErrorSend,
+	}
+}
+
 // MetricsEngine is a generic interface to record PBS metrics into the desired backend
 // The first three metrics function fire off once per incoming request, so total metrics
 // will equal the total number of incoming requests. The remaining 5 fire off per outgoing
@@ -548,4 +588,7 @@ type MetricsEngine interface {
 	RecordConnectionWant()
 	RecordConnectionGot()
 	RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus)
+	RecordAuctionAudit(action AuctionAuditAction, account string)
+	RecordAuctionAuditError(reason AuctionAuditErrorReason)
+	RecordAuctionAuditActiveFilters(count int)
 }
