@@ -120,3 +120,6 @@ require (
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+// Pin testify to v1.8.1 to avoid breaking NotSame validation in v1.11.0
+replace github.com/stretchr/testify => github.com/stretchr/testify v1.8.1
