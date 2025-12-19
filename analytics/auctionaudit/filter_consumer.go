@@ -55,7 +55,7 @@ func NewFilterConsumer(ctx context.Context, cfg config.AuctionAuditAnalytics, re
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate consumer group ID: %w", err)
 	}
-	groupID := fmt.Sprintf("auction-audit-%s", id)
+	groupID := fmt.Sprintf("auction-audit-filters-%s", id)
 
 	consumer, err := sarama.NewConsumerGroup(cfg.Brokers, groupID, saramaConfig)
 	if err != nil {

@@ -38,7 +38,6 @@ func NewProducer(cfg config.AuctionAuditAnalytics, metricsEngine metrics.Metrics
 	saramaConfig.Producer.RequiredAcks = sarama.NoResponse
 	saramaConfig.Producer.Return.Errors = true
 
-	// Configure SASL if enabled
 	if cfg.SASL.Enabled {
 		configureSASL(saramaConfig, cfg.SASL)
 	}

@@ -2,6 +2,7 @@ package auctionaudit
 
 import (
 	"crypto/sha512"
+	"crypto/tls"
 
 	"github.com/IBM/sarama"
 	"github.com/prebid/prebid-server/v3/config"
@@ -42,5 +43,9 @@ func configureSASL(cfg *sarama.Config, saslCfg config.SASLConfig) {
 	cfg.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient {
 		return &XDGSCRAMClient{HashGeneratorFcn: SHA512}
 	}
-}
 
+	cfg.Net.TLS.Enable = true
+	cfg.Net.TLS.Config = &tls.Config{
+		InsecureSkipVerify: saslCfg.InsecureSkipVerify,
+	}
+}

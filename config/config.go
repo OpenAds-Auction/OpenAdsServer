@@ -572,9 +572,10 @@ type AuctionAuditAnalytics struct {
 }
 
 type SASLConfig struct {
-	Enabled  bool   `mapstructure:"enabled"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
+	Enabled            bool   `mapstructure:"enabled"`
+	Username           string `mapstructure:"username"`
+	Password           string `mapstructure:"password"`
+	InsecureSkipVerify bool   `mapstructure:"insecure_skip_verify"`
 }
 
 type VTrack struct {
@@ -1223,6 +1224,7 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("analytics.auction_audit.sasl.enabled", false)
 	v.SetDefault("analytics.auction_audit.sasl.username", "")
 	v.SetDefault("analytics.auction_audit.sasl.password", "")
+	v.SetDefault("analytics.auction_audit.sasl.insecure_skip_verify", false)
 	v.SetDefault("amp_timeout_adjustment_ms", 0)
 	v.BindEnv("gdpr.default_value")
 	v.SetDefault("gdpr.enabled", true)
