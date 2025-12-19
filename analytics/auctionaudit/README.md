@@ -16,10 +16,10 @@ analytics:
     environment: "prod"
 
     # Filter consumer settings
-    filter_topic: "auction-audit-filters"     # Topic for filter subscriptions
+    filter_topic: "auction-audit-filters"
 
     # Producer settings
-    matched_topic: "auction-audit-matched"    # Topic for matched events
+    matched_topic: "auction-audit-matched"
     flush_interval: "100ms"                   # Batch flush interval
     compression: "snappy"                     # none/snappy/gzip/lz4/zstd
 
