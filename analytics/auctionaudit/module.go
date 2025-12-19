@@ -2,6 +2,7 @@ package auctionaudit
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -74,7 +75,7 @@ func (m *AuctionAuditModule) LogAuctionObject(ao *analytics.AuctionObject) {
 		return
 	}
 
-	accountID := ao.Account.ID
+	accountID := strings.ToLower(ao.Account.ID)
 	req := ao.RequestWrapper.BidRequest
 
 	domain := ""

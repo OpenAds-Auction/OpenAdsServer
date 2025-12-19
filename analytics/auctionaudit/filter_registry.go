@@ -128,8 +128,6 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) bool {
 		return false
 	}
 
-	accountId := strings.ToLower(filter.AccountId)
-
 	// Cap expiration to max TTL
 	maxExpiration := time.Now().Add(r.maxTTL).UnixMilli()
 	if filter.ExpiresAtMs == 0 || filter.ExpiresAtMs > maxExpiration {
@@ -139,7 +137,7 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	accountFilters := r.byAccount[accountId]
+	accountFilters := r.byAccount[filter.AccountId]
 	var exists bool
 	if accountFilters != nil {
 		_, exists = accountFilters[filter.SessionId]
@@ -153,7 +151,7 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) bool {
 
 	if accountFilters == nil {
 		accountFilters = make(map[int32]*storedFilter)
-		r.byAccount[accountId] = accountFilters
+		r.byAccount[filter.AccountId] = accountFilters
 	}
 
 	accountFilters[filter.SessionId] = &storedFilter{
@@ -170,8 +168,6 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) bool {
 }
 
 func (r *FilterRegistry) Unregister(sessionId int32, accountId string) {
-	accountId = strings.ToLower(accountId)
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -195,7 +191,7 @@ func (r *FilterRegistry) GetMatches(accountID, domain, appBundle string, eventMe
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	accountFilters := r.byAccount[strings.ToLower(accountID)]
+	accountFilters := r.byAccount[accountID]
 	if len(accountFilters) == 0 {
 		return nil
 	}

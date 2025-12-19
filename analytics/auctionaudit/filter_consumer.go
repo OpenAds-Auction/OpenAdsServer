@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -143,6 +144,8 @@ func (h *filterConsumerHandler) processMessage(msg *sarama.ConsumerMessage) {
 		h.metricsEngine.RecordAuctionAuditError(metrics.AuctionAuditErrorConsume)
 		return
 	}
+
+	filter.AccountId = strings.ToLower(filter.AccountId)
 
 	action := FilterActionCreate
 	if len(msg.Key) > 0 {
