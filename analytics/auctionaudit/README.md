@@ -10,30 +10,28 @@ Add to your `pbs.yaml`:
 analytics:
   auction_audit:
     enabled: true
+
+    # Kafka settings
     brokers:
       - "kafka-broker-1:9092"
       - "kafka-broker-2:9092"
     environment: "prod"
-
-    # Filter consumer settings
-    filter_topic: "auction-audit-filters"
+    sasl:
+      enabled: true
+      username: ""
+      password: ""
+      insecure_skip_verify: false
 
     # Producer settings
     matched_topic: "auction-audit-matched"
-    flush_interval: "100ms"                   # Batch flush interval
+    flush_interval: "1s"                      # Batch flush interval
     compression: "snappy"                     # none/snappy/gzip/lz4/zstd
 
-    # Safety limits
-    max_filters: 1000                         # Max concurrent active filters
+    # Consumer settings
+    filter_topic: "auction-audit-filters"
+    max_filters: 500                          # Max concurrent active filters
     max_filter_ttl: "1h"                      # Maximum filter TTL (caps requested expiration)
-    cleanup_interval: "1m"                    # How often to clean up expired filters
-
-    # SASL authentication (SCRAM-SHA-512)
-    sasl:
-      enabled: true
-      username: "your-username"
-      password: "your-password"
-      insecure_skip_verify: false
+    cleanup_interval: "10m"                   # How often to clean up expired filters
 ```
 
 ## Filter Schema
@@ -46,7 +44,6 @@ string matching is case-insensitive, but exact - no fuzzy matching
 
 - `account_id` is **required**
 - `domain`, `app_bundle`, `media_types` are optional filters
-- If a filter field is set, the event must match; if not set, any value matches
 - For `media_types`, at least one of the filter's types must be present in the event
 
 ## Metrics
@@ -55,16 +52,13 @@ The module exposes Prometheus metrics:
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `auctionaudit_active_filters` | Gauge | Number of currently active audit filters |
-| `auctionaudit_filters_registered_total` | Counter | Total filters registered |
-| `auctionaudit_filters_expired_total` | Counter | Total filters expired due to TTL |
-| `auctionaudit_events_matched_total{account_id}` | Counter | Events matched per account |
-| `auctionaudit_send_errors_total` | Counter | Errors sending to Kafka |
-| `auctionaudit_consume_errors_total` | Counter | Errors consuming filter messages |
+| `auction_audit_actions_total` | Counter | Count of filters registered/unregistered, and count of events matched by account |
+| `auction_audit_errors_total` | Counter | Count of errors by reason |
+| `auction_audit_active_filters` | Gauge | Number of currently active audit filters |
 
 ## PII Scrubbing
 
-To ensure PII is scrubbed for this module, configure account-level activity controls:
+PII scrubbing can be configured via account-level activity controls:
 
 ```json
 {
