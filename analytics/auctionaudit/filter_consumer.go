@@ -158,10 +158,10 @@ func (h *filterConsumerHandler) processMessage(msg *sarama.ConsumerMessage) {
 		glog.Infof("[auctionaudit] Unregistered filter: session=%d account=%s", filter.SessionId, filter.AccountId)
 	default:
 		// Default to create
-		if h.registry.Register(filter) {
-			glog.Infof("[auctionaudit] Registered filter: session=%d account=%s", filter.SessionId, filter.AccountId)
+		if err := h.registry.Register(filter); err != nil {
+			glog.Warningf("[auctionaudit] Failed to register filter: session=%d account=%s: %v", filter.SessionId, filter.AccountId, err)
 		} else {
-			glog.Warningf("[auctionaudit] Failed to register filter: session=%d account=%s", filter.SessionId, filter.AccountId)
+			glog.Infof("[auctionaudit] Registered filter: session=%d account=%s", filter.SessionId, filter.AccountId)
 		}
 	}
 }

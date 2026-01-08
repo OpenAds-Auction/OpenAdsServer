@@ -2,6 +2,7 @@ package auctionaudit
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -9,6 +10,11 @@ import (
 	"github.com/golang/glog"
 	"github.com/prebid/openrtb/v20/openrtb2"
 	"github.com/prebid/prebid-server/v3/metrics"
+)
+
+var (
+	ErrInvalidFilterRequest = errors.New("filter is nil or missing required fields (session_id, account_id)")
+	ErrRegistryAtCapacity   = errors.New("filter registry at max capacity")
 )
 
 type MediaTypeSet uint8
@@ -123,9 +129,9 @@ func (r *FilterRegistry) Start(ctx context.Context, cleanupInterval time.Duratio
 	go r.cleanupLoop(ctx, cleanupInterval)
 }
 
-func (r *FilterRegistry) Register(filter *AuctionFilterRequest) bool {
+func (r *FilterRegistry) Register(filter *AuctionFilterRequest) error {
 	if filter == nil || filter.SessionId == 0 || filter.AccountId == "" {
-		return false
+		return ErrInvalidFilterRequest
 	}
 
 	// Cap expiration to max TTL
@@ -146,7 +152,7 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) bool {
 	// reject if at capacity
 	if !exists && r.count >= r.maxFilters {
 		glog.Warningf("[auctionaudit] Filter rejected: max filters (%d) reached", r.maxFilters)
-		return false
+		return ErrRegistryAtCapacity
 	}
 
 	if accountFilters == nil {
@@ -164,7 +170,7 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) bool {
 		r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterRegistered, filter.AccountId)
 	}
 	r.metricsEngine.RecordAuctionAuditActiveFilters(r.count)
-	return true
+	return nil
 }
 
 func (r *FilterRegistry) Unregister(sessionId int32, accountId string) {

@@ -69,7 +69,7 @@ func TestFilterRegistry_Register(t *testing.T) {
 		ExpiresAtMs: time.Now().Add(10 * time.Minute).UnixMilli(),
 	}
 
-	assert.True(t, registry.Register(filter))
+	assert.NoError(t, registry.Register(filter))
 	assert.Equal(t, 1, registry.Count())
 
 	filter2 := &AuctionFilterRequest{
@@ -79,7 +79,7 @@ func TestFilterRegistry_Register(t *testing.T) {
 		Domain:      "updated.com",
 		ExpiresAtMs: time.Now().Add(10 * time.Minute).UnixMilli(),
 	}
-	assert.True(t, registry.Register(filter2))
+	assert.NoError(t, registry.Register(filter2))
 	assert.Equal(t, 1, registry.Count())
 
 	matches := registry.GetMatches("account-123", "updated.com", "", 0)
@@ -89,25 +89,25 @@ func TestFilterRegistry_Register(t *testing.T) {
 func TestFilterRegistry_Register_MaxLimit(t *testing.T) {
 	registry := newTestRegistry(2)
 
-	assert.True(t, registry.Register(&AuctionFilterRequest{SessionId: 1, AccountId: "a1"}))
-	assert.True(t, registry.Register(&AuctionFilterRequest{SessionId: 2, AccountId: "a2"}))
+	assert.NoError(t, registry.Register(&AuctionFilterRequest{SessionId: 1, AccountId: "a1"}))
+	assert.NoError(t, registry.Register(&AuctionFilterRequest{SessionId: 2, AccountId: "a2"}))
 	assert.Equal(t, 2, registry.Count())
 
-	assert.False(t, registry.Register(&AuctionFilterRequest{SessionId: 3, AccountId: "a3"}))
+	assert.ErrorIs(t, registry.Register(&AuctionFilterRequest{SessionId: 3, AccountId: "a3"}), ErrRegistryAtCapacity)
 	assert.Equal(t, 2, registry.Count())
 
-	assert.True(t, registry.Register(&AuctionFilterRequest{SessionId: 1, AccountId: "a1", Domain: "updated.com"}))
+	assert.NoError(t, registry.Register(&AuctionFilterRequest{SessionId: 1, AccountId: "a1", Domain: "updated.com"}))
 	assert.Equal(t, 2, registry.Count())
 }
 
 func TestFilterRegistry_Register_InvalidFilter(t *testing.T) {
 	registry := newTestRegistry(10)
 
-	assert.False(t, registry.Register(nil))
+	assert.ErrorIs(t, registry.Register(nil), ErrInvalidFilterRequest)
 
-	assert.False(t, registry.Register(&AuctionFilterRequest{AccountId: "a1"}))
+	assert.ErrorIs(t, registry.Register(&AuctionFilterRequest{AccountId: "a1"}), ErrInvalidFilterRequest)
 
-	assert.False(t, registry.Register(&AuctionFilterRequest{SessionId: 1}))
+	assert.ErrorIs(t, registry.Register(&AuctionFilterRequest{SessionId: 1}), ErrInvalidFilterRequest)
 
 	assert.Equal(t, 0, registry.Count())
 }
