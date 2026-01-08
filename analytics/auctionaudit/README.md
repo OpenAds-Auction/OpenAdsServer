@@ -10,28 +10,26 @@ Add to your `pbs.yaml`:
 analytics:
   auction_audit:
     enabled: true
-
-    # Kafka settings
-    brokers:
-      - "kafka-broker-1:9092"
-      - "kafka-broker-2:9092"
     environment: "prod"
-    sasl:
-      enabled: true
-      username: ""
-      password: ""
-      insecure_skip_verify: false
 
-    # Producer settings
-    matched_topic: "auction-audit-matched"
-    flush_interval: "1s"                      # Batch flush interval
-    compression: "snappy"                     # none/snappy/gzip/lz4/zstd
-
-    # Consumer settings
-    filter_topic: "auction-audit-filters"
+    # Filter registry settings
     max_filters: 500                          # Max concurrent active filters
     max_filter_ttl: "1h"                      # Maximum filter TTL (caps requested expiration)
     cleanup_interval: "10m"                   # How often to clean up expired filters
+
+    kafka:
+      brokers:
+        - "kafka-broker-1:9092"
+        - "kafka-broker-2:9092"
+      sasl:
+        enabled: true
+        username: ""
+        password: ""
+        insecure_skip_verify: false
+      matched_topic: "auction-audit-matched"
+      filter_topic: "auction-audit-filters"
+      flush_interval: "1s"                    # Batch flush interval
+      compression: "snappy"                   # none/snappy/gzip/lz4/zstd
 ```
 
 ## Filter Schema

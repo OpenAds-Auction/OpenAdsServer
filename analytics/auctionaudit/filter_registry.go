@@ -56,7 +56,7 @@ func MediaTypeSetFromImps(imps []openrtb2.Imp) MediaTypeSet {
 	return set
 }
 
-// returns true if any media type is present in both sets
+// Intersects returns true if any media type is present in both sets
 func (s MediaTypeSet) Intersects(other MediaTypeSet) bool {
 	return (s & other) != 0
 }
@@ -93,7 +93,7 @@ func (f *storedFilter) matches(domain, appBundle string, eventMediaTypes MediaTy
 		return false
 	}
 
-	// at least 1 mediat type must be present
+	// at least 1 media type must be present
 	if f.mediaTypeSet != 0 && !f.mediaTypeSet.Intersects(eventMediaTypes) {
 		return false
 	}

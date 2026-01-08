@@ -552,23 +552,21 @@ type S3AnalyticsBuffer struct {
 }
 
 type AuctionAuditAnalytics struct {
-	Enabled     bool       `mapstructure:"enabled"`
-	Brokers     []string   `mapstructure:"brokers"`
-	Environment string     `mapstructure:"environment"`
-	SASL        SASLConfig `mapstructure:"sasl"`
+	Enabled         bool                    `mapstructure:"enabled"`
+	Environment     string                  `mapstructure:"environment"`
+	MaxFilters      int                     `mapstructure:"max_filters"`
+	MaxFilterTTL    string                  `mapstructure:"max_filter_ttl"`
+	CleanupInterval string                  `mapstructure:"cleanup_interval"`
+	Kafka           AuctionAuditKafkaConfig `mapstructure:"kafka"`
+}
 
-	// Producer settings
-	MatchedTopic  string `mapstructure:"matched_topic"`
-	FlushInterval string `mapstructure:"flush_interval"`
-	Compression   string `mapstructure:"compression"`
-
-	// Filter consumer settings
-	FilterTopic string `mapstructure:"filter_topic"`
-
-	// Filter registry settings
-	MaxFilters      int    `mapstructure:"max_filters"`
-	MaxFilterTTL    string `mapstructure:"max_filter_ttl"`
-	CleanupInterval string `mapstructure:"cleanup_interval"`
+type AuctionAuditKafkaConfig struct {
+	Brokers       []string   `mapstructure:"brokers"`
+	SASL          SASLConfig `mapstructure:"sasl"`
+	MatchedTopic  string     `mapstructure:"matched_topic"`
+	FilterTopic   string     `mapstructure:"filter_topic"`
+	FlushInterval string     `mapstructure:"flush_interval"`
+	Compression   string     `mapstructure:"compression"`
 }
 
 type SASLConfig struct {
@@ -1212,19 +1210,19 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("analytics.s3.buffers.timeout", "15m")
 	v.SetDefault("analytics.s3.upload_timeout", "2s")
 	v.SetDefault("analytics.auction_audit.enabled", false)
-	v.SetDefault("analytics.auction_audit.brokers", []string{})
 	v.SetDefault("analytics.auction_audit.environment", "prod")
-	v.SetDefault("analytics.auction_audit.matched_topic", "matched-auction-events")
-	v.SetDefault("analytics.auction_audit.filter_topic", "session-filters-request")
-	v.SetDefault("analytics.auction_audit.flush_interval", "1s")
-	v.SetDefault("analytics.auction_audit.compression", "none")
 	v.SetDefault("analytics.auction_audit.max_filters", 1000)
 	v.SetDefault("analytics.auction_audit.max_filter_ttl", "1h")
 	v.SetDefault("analytics.auction_audit.cleanup_interval", "10m")
-	v.SetDefault("analytics.auction_audit.sasl.enabled", false)
-	v.SetDefault("analytics.auction_audit.sasl.username", "")
-	v.SetDefault("analytics.auction_audit.sasl.password", "")
-	v.SetDefault("analytics.auction_audit.sasl.insecure_skip_verify", false)
+	v.SetDefault("analytics.auction_audit.kafka.brokers", []string{})
+	v.SetDefault("analytics.auction_audit.kafka.matched_topic", "matched-auction-events")
+	v.SetDefault("analytics.auction_audit.kafka.filter_topic", "session-filters-request")
+	v.SetDefault("analytics.auction_audit.kafka.flush_interval", "1s")
+	v.SetDefault("analytics.auction_audit.kafka.compression", "none")
+	v.SetDefault("analytics.auction_audit.kafka.sasl.enabled", false)
+	v.SetDefault("analytics.auction_audit.kafka.sasl.username", "")
+	v.SetDefault("analytics.auction_audit.kafka.sasl.password", "")
+	v.SetDefault("analytics.auction_audit.kafka.sasl.insecure_skip_verify", false)
 	v.SetDefault("amp_timeout_adjustment_ms", 0)
 	v.BindEnv("gdpr.default_value")
 	v.SetDefault("gdpr.enabled", true)

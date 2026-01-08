@@ -17,7 +17,7 @@ type Producer struct {
 	metricsEngine metrics.MetricsEngine
 }
 
-func NewProducer(cfg config.AuctionAuditAnalytics, metricsEngine metrics.MetricsEngine) (*Producer, error) {
+func NewProducer(cfg config.AuctionAuditKafkaConfig, metricsEngine metrics.MetricsEngine) (*Producer, error) {
 	saramaConfig := sarama.NewConfig()
 
 	if cfg.FlushInterval != "" {

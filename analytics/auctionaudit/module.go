@@ -2,6 +2,7 @@ package auctionaudit
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -22,6 +23,10 @@ type AuctionAuditModule struct {
 }
 
 func NewModule(cfg config.AuctionAuditAnalytics, metricsEngine metrics.MetricsEngine) (analytics.Module, error) {
+	if err := validateConfig(cfg.Kafka); err != nil {
+		return nil, fmt.Errorf("invalid auction audit config: %w", err)
+	}
+
 	cleanupInterval, err := time.ParseDuration(cfg.CleanupInterval)
 	if err != nil {
 		return nil, err
@@ -36,20 +41,17 @@ func NewModule(cfg config.AuctionAuditAnalytics, metricsEngine metrics.MetricsEn
 
 	filterRegistry := NewFilterRegistry(cfg.MaxFilters, maxFilterTTL, metricsEngine)
 
-	producer, err := NewProducer(cfg, metricsEngine)
+	producer, err := NewProducer(cfg.Kafka, metricsEngine)
 	if err != nil {
 		cancel()
 		return nil, err
 	}
 
-	var filterConsumer *FilterConsumer
-	if cfg.FilterTopic != "" {
-		filterConsumer, err = NewFilterConsumer(ctx, cfg, filterRegistry, metricsEngine)
-		if err != nil {
-			cancel()
-			producer.Close()
-			return nil, err
-		}
+	filterConsumer, err := NewFilterConsumer(ctx, cfg.Kafka, filterRegistry, metricsEngine)
+	if err != nil {
+		cancel()
+		producer.Close()
+		return nil, err
 	}
 
 	module := &AuctionAuditModule{
@@ -65,7 +67,7 @@ func NewModule(cfg config.AuctionAuditAnalytics, metricsEngine metrics.MetricsEn
 	filterRegistry.Start(ctx, cleanupInterval)
 
 	glog.Infof("[auctionaudit] Auction audit module initialized: matched_topic=%s filter_topic=%s brokers=%v",
-		cfg.MatchedTopic, cfg.FilterTopic, cfg.Brokers)
+		cfg.Kafka.MatchedTopic, cfg.Kafka.FilterTopic, cfg.Kafka.Brokers)
 
 	return module, nil
 }
@@ -122,6 +124,19 @@ func (m *AuctionAuditModule) Shutdown() {
 	}
 
 	glog.Info("[auctionaudit] Shutdown complete")
+}
+
+func validateConfig(cfg config.AuctionAuditKafkaConfig) error {
+	if len(cfg.Brokers) == 0 {
+		return fmt.Errorf("kafka.brokers is required")
+	}
+	if cfg.FilterTopic == "" {
+		return fmt.Errorf("kafka.filter_topic is required")
+	}
+	if cfg.MatchedTopic == "" {
+		return fmt.Errorf("kafka.matched_topic is required")
+	}
+	return nil
 }
 
 func (m *AuctionAuditModule) LogAmpObject(ao *analytics.AmpObject) {}

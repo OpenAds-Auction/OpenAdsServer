@@ -38,7 +38,7 @@ type filterConsumerHandler struct {
 	metricsEngine metrics.MetricsEngine
 }
 
-func NewFilterConsumer(ctx context.Context, cfg config.AuctionAuditAnalytics, registry *FilterRegistry, metricsEngine metrics.MetricsEngine) (*FilterConsumer, error) {
+func NewFilterConsumer(ctx context.Context, cfg config.AuctionAuditKafkaConfig, registry *FilterRegistry, metricsEngine metrics.MetricsEngine) (*FilterConsumer, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
 
