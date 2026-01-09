@@ -402,6 +402,24 @@ func (me *MultiMetricsEngine) RecordS3Analytics(destination metrics.AnalyticsDes
 	}
 }
 
+func (me *MultiMetricsEngine) RecordAuctionAudit(action metrics.AuctionAuditAction, account string) {
+	for _, thisME := range *me {
+		thisME.RecordAuctionAudit(action, account)
+	}
+}
+
+func (me *MultiMetricsEngine) RecordAuctionAuditError(reason metrics.AuctionAuditErrorReason) {
+	for _, thisME := range *me {
+		thisME.RecordAuctionAuditError(reason)
+	}
+}
+
+func (me *MultiMetricsEngine) RecordAuctionAuditActiveFilters(count int) {
+	for _, thisME := range *me {
+		thisME.RecordAuctionAuditActiveFilters(count)
+	}
+}
+
 // NilMetricsEngine implements the MetricsEngine interface where no metrics are actually captured. This is
 // used if no metric backend is configured and also for tests.
 type NilMetricsEngine struct{}
@@ -592,4 +610,13 @@ func (me *NilMetricsEngine) RecordConnectionGot() {
 }
 
 func (me *NilMetricsEngine) RecordS3Analytics(destination metrics.AnalyticsDestination, status metrics.S3UploadStatus) {
+}
+
+func (me *NilMetricsEngine) RecordAuctionAudit(action metrics.AuctionAuditAction, account string) {
+}
+
+func (me *NilMetricsEngine) RecordAuctionAuditError(reason metrics.AuctionAuditErrorReason) {
+}
+
+func (me *NilMetricsEngine) RecordAuctionAuditActiveFilters(count int) {
 }

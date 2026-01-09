@@ -740,6 +740,18 @@ func (me *Metrics) RecordS3Analytics(destination AnalyticsDestination, status S3
 	}
 }
 
+func (me *Metrics) RecordAuctionAudit(action AuctionAuditAction, account string) {
+	// go-metrics doesn't support this metric - no-op
+}
+
+func (me *Metrics) RecordAuctionAuditError(reason AuctionAuditErrorReason) {
+	// go-metrics doesn't support this metric - no-op
+}
+
+func (me *Metrics) RecordAuctionAuditActiveFilters(count int) {
+	// go-metrics doesn't support this metric - no-op
+}
+
 // RecordRequestTime implements a part of the MetricsEngine interface. The calling code is responsible
 // for determining the call duration.
 func (me *Metrics) RecordRequestTime(labels Labels, length time.Duration) {

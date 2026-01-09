@@ -108,6 +108,11 @@ type Metrics struct {
 	// S3 Analytics Metrics
 	analyticsS3Upload *prometheus.CounterVec
 
+	// Auction Audit Metrics
+	auctionAuditActions       *prometheus.CounterVec
+	auctionAuditErrors        *prometheus.CounterVec
+	auctionAuditActiveFilters prometheus.Gauge
+
 	metricsDisabled config.DisabledMetrics
 }
 
@@ -130,6 +135,7 @@ const (
 	optOutLabel          = "opt_out"
 	overheadTypeLabel    = "overhead_type"
 	privacyBlockedLabel  = "privacy_blocked"
+	errorTypeLabel       = "error_type"
 	requestStatusLabel   = "request_status"
 	requestTypeLabel     = "request_type"
 	requestEndpointLabel = "request_size"
@@ -543,6 +549,20 @@ func NewMetrics(cfg config.PrometheusMetrics, disabledMetrics config.DisabledMet
 		"Count of S3 analytics uploads labeled by destination and status.",
 		[]string{destinationLabel, statusLabel})
 
+	metrics.auctionAuditActions = newCounter(cfg, reg,
+		"auction_audit_actions_total",
+		"Count of auction audit actions labeled by action type and account.",
+		[]string{actionLabel, accountLabel})
+
+	metrics.auctionAuditErrors = newCounter(cfg, reg,
+		"auction_audit_errors_total",
+		"Count of auction audit errors labeled by error type.",
+		[]string{errorTypeLabel})
+
+	metrics.auctionAuditActiveFilters = newGaugeWithoutLabels(cfg, reg,
+		"auction_audit_active_filters",
+		"Number of currently active audit filters.")
+
 	createModulesMetrics(cfg, reg, &metrics, moduleStageNames, standardTimeBuckets)
 
 	metrics.Gatherer = reg
@@ -641,6 +661,18 @@ func newCounterWithoutLabels(cfg config.PrometheusMetrics, registry *prometheus.
 	counter := prometheus.NewCounter(opts)
 	registry.MustRegister(counter)
 	return counter
+}
+
+func newGaugeWithoutLabels(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string) prometheus.Gauge {
+	opts := prometheus.GaugeOpts{
+		Namespace: cfg.Namespace,
+		Subsystem: cfg.Subsystem,
+		Name:      name,
+		Help:      help,
+	}
+	gauge := prometheus.NewGauge(opts)
+	registry.MustRegister(gauge)
+	return gauge
 }
 
 func newHistogramVec(cfg config.PrometheusMetrics, registry *prometheus.Registry, name, help string, labels []string, buckets []float64) *prometheus.HistogramVec {
@@ -1158,4 +1190,21 @@ func (m *Metrics) RecordS3Analytics(destination metrics.AnalyticsDestination, st
 		destinationLabel: string(destination),
 		statusLabel:      string(status),
 	}).Inc()
+}
+
+func (m *Metrics) RecordAuctionAudit(action metrics.AuctionAuditAction, account string) {
+	m.auctionAuditActions.With(prometheus.Labels{
+		actionLabel:  string(action),
+		accountLabel: account,
+	}).Inc()
+}
+
+func (m *Metrics) RecordAuctionAuditError(reason metrics.AuctionAuditErrorReason) {
+	m.auctionAuditErrors.With(prometheus.Labels{
+		errorTypeLabel: string(reason),
+	}).Inc()
+}
+
+func (m *Metrics) RecordAuctionAuditActiveFilters(count int) {
+	m.auctionAuditActiveFilters.Set(float64(count))
 }
