@@ -19,6 +19,7 @@ analytics:
     region: "us-east-1"   # Optional
     upload_timeout: "2s"  # Timeout for entire upload operation (default: 2s)
     fallback_dir: "/var/log/prebid-fallback"  # Optional, for storing failed uploads
+    use_path_style: false # Set to true when using LocalStack
     
     buffers:
       buffer_size: "10MB"  # Flush when buffer reaches this size (default: 10MB)
