@@ -158,6 +158,10 @@ func TestDefaults(t *testing.T) {
 	cmpBools(t, "account_debug", true, cfg.Metrics.Disabled.AccountDebug)
 	cmpBools(t, "account_stored_responses", true, cfg.Metrics.Disabled.AccountStoredResponses)
 	cmpBools(t, "adapter_connections_metrics", true, cfg.Metrics.Disabled.AdapterConnectionMetrics)
+<<<<<<< HEAD
+=======
+	cmpBools(t, "adapter_connections_dial_metrics", true, cfg.Metrics.Disabled.AdapterConnectionDialMetrics)
+>>>>>>> d0cd97ee (Metrics: Standardize adapter connection metrics names (#4549))
 	cmpBools(t, "adapter_buyeruid_scrubbed", true, cfg.Metrics.Disabled.AdapterBuyerUIDScrubbed)
 	cmpBools(t, "adapter_gdpr_request_blocked", false, cfg.Metrics.Disabled.AdapterGDPRRequestBlocked)
 	cmpStrings(t, "certificates_file", "", cfg.PemCertsFile)
@@ -483,6 +487,10 @@ metrics:
     account_debug: false
     account_stored_responses: false
     adapter_connections_metrics: true
+<<<<<<< HEAD
+=======
+    adapter_connections_dial_metrics: true
+>>>>>>> d0cd97ee (Metrics: Standardize adapter connection metrics names (#4549))
     adapter_buyeruid_scrubbed: false
     adapter_gdpr_request_blocked: true
     account_modules_metrics: true
@@ -918,6 +926,10 @@ func TestFullConfig(t *testing.T) {
 	cmpBools(t, "account_debug", false, cfg.Metrics.Disabled.AccountDebug)
 	cmpBools(t, "account_stored_responses", false, cfg.Metrics.Disabled.AccountStoredResponses)
 	cmpBools(t, "adapter_connections_metrics", true, cfg.Metrics.Disabled.AdapterConnectionMetrics)
+<<<<<<< HEAD
+=======
+	cmpBools(t, "adapter_connections_dial_metrics", true, cfg.Metrics.Disabled.AdapterConnectionDialMetrics)
+>>>>>>> d0cd97ee (Metrics: Standardize adapter connection metrics names (#4549))
 	cmpBools(t, "adapter_buyeruid_scrubbed", false, cfg.Metrics.Disabled.AdapterBuyerUIDScrubbed)
 	cmpBools(t, "adapter_gdpr_request_blocked", true, cfg.Metrics.Disabled.AdapterGDPRRequestBlocked)
 	cmpStrings(t, "certificates_file", "/etc/ssl/cert.pem", cfg.PemCertsFile)

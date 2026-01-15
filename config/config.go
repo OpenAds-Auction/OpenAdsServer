@@ -629,6 +629,12 @@ type DisabledMetrics struct {
 	// that were created or reused.
 	AdapterConnectionMetrics bool `mapstructure:"adapter_connections_metrics"`
 
+<<<<<<< HEAD
+=======
+	// True if we don't want to collect metrics on dial time and dial errors
+	AdapterConnectionDialMetrics bool `mapstructure:"adapter_connections_dial_metrics"`
+
+>>>>>>> d0cd97ee (Metrics: Standardize adapter connection metrics names (#4549))
 	// True if we don't want to collect the per adapter buyer UID scrubbed metric
 	AdapterBuyerUIDScrubbed bool `mapstructure:"adapter_buyeruid_scrubbed"`
 
@@ -1041,6 +1047,10 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("metrics.disabled_metrics.account_debug", true)
 	v.SetDefault("metrics.disabled_metrics.account_stored_responses", true)
 	v.SetDefault("metrics.disabled_metrics.adapter_connections_metrics", true)
+<<<<<<< HEAD
+=======
+	v.SetDefault("metrics.disabled_metrics.adapter_connections_dial_metrics", true)
+>>>>>>> d0cd97ee (Metrics: Standardize adapter connection metrics names (#4549))
 	v.SetDefault("metrics.disabled_metrics.adapter_buyeruid_scrubbed", true)
 	v.SetDefault("metrics.disabled_metrics.adapter_gdpr_request_blocked", false)
 	v.SetDefault("metrics.influxdb.host", "")
