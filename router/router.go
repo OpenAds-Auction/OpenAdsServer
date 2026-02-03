@@ -127,11 +127,20 @@ func New(cfg *config.Configuration, rateConvertor *currency.RateConverter) (r *R
 		Router: httprouter.New(),
 	}
 
+<<<<<<< HEAD
 	// For bid processing, we need both the hardcoded certificates and the certificates found in container's
 	// local file system
 	certPool := ssl.GetRootCAPool()
+=======
+	certPool, certPoolCreateErr := ssl.CreateCertPool()
+	if certPoolCreateErr != nil {
+		logger.Infof("Could not load root certificates: %s \n", certPoolCreateErr.Error())
+	}
+
+	// load optional PEM certificate files
+>>>>>>> c6afd83c (Deprecate Embedded Certs (#4625))
 	var readCertErr error
-	certPool, readCertErr = ssl.AppendPEMFileToRootCAPool(certPool, cfg.PemCertsFile)
+	certPool, readCertErr = ssl.AppendPEMFileToCertPool(certPool, cfg.PemCertsFile)
 	if readCertErr != nil {
 		glog.Infof("Could not read certificates file: %s \n", readCertErr.Error())
 	}
