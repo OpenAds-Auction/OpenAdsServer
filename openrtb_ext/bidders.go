@@ -130,7 +130,11 @@ var coreBidderNames []BidderName = []BidderName{
 	BidderGamma,
 	BidderGamoshi,
 	BidderGlobalsun,
+<<<<<<< HEAD
 	BidderGothamads,
+=======
+	BidderGoldbach,
+>>>>>>> 8619d9f5 (Gothamads: Rename to intenze (#4333))
 	BidderGrid,
 	BidderGumGum,
 	BidderHuaweiAds,
@@ -140,6 +144,7 @@ var coreBidderNames []BidderName = []BidderName{
 	BidderInfyTV,
 	BidderInMobi,
 	BidderInsticator,
+	BidderIntenze,
 	BidderInteractiveoffers,
 	BidderIntertech,
 	BidderInvibes,
@@ -500,7 +505,11 @@ const (
 	BidderGamma             BidderName = "gamma"
 	BidderGamoshi           BidderName = "gamoshi"
 	BidderGlobalsun         BidderName = "globalsun"
+<<<<<<< HEAD
 	BidderGothamads         BidderName = "gothamads"
+=======
+	BidderGoldbach          BidderName = "goldbach"
+>>>>>>> 8619d9f5 (Gothamads: Rename to intenze (#4333))
 	BidderGrid              BidderName = "grid"
 	BidderGumGum            BidderName = "gumgum"
 	BidderHuaweiAds         BidderName = "huaweiads"
@@ -510,6 +519,7 @@ const (
 	BidderInfyTV            BidderName = "infytv"
 	BidderInMobi            BidderName = "inmobi"
 	BidderInsticator        BidderName = "insticator"
+	BidderIntenze           BidderName = "intenze"
 	BidderInteractiveoffers BidderName = "interactiveoffers"
 	BidderIntertech         BidderName = "intertech"
 	BidderInvibes           BidderName = "invibes"

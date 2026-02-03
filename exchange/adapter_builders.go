@@ -113,7 +113,11 @@ import (
 	"github.com/prebid/prebid-server/v3/adapters/gamma"
 	"github.com/prebid/prebid-server/v3/adapters/gamoshi"
 	"github.com/prebid/prebid-server/v3/adapters/globalsun"
+<<<<<<< HEAD
 	"github.com/prebid/prebid-server/v3/adapters/gothamads"
+=======
+	"github.com/prebid/prebid-server/v3/adapters/goldbach"
+>>>>>>> 8619d9f5 (Gothamads: Rename to intenze (#4333))
 	"github.com/prebid/prebid-server/v3/adapters/grid"
 	"github.com/prebid/prebid-server/v3/adapters/gumgum"
 	"github.com/prebid/prebid-server/v3/adapters/huaweiads"
@@ -123,6 +127,7 @@ import (
 	"github.com/prebid/prebid-server/v3/adapters/infytv"
 	"github.com/prebid/prebid-server/v3/adapters/inmobi"
 	"github.com/prebid/prebid-server/v3/adapters/insticator"
+	"github.com/prebid/prebid-server/v3/adapters/intenze"
 	"github.com/prebid/prebid-server/v3/adapters/interactiveoffers"
 	"github.com/prebid/prebid-server/v3/adapters/intertech"
 	"github.com/prebid/prebid-server/v3/adapters/invibes"
@@ -377,7 +382,11 @@ func newAdapterBuilders() map[openrtb_ext.BidderName]adapters.Builder {
 		openrtb_ext.BidderGamma:             gamma.Builder,
 		openrtb_ext.BidderGamoshi:           gamoshi.Builder,
 		openrtb_ext.BidderGlobalsun:         globalsun.Builder,
+<<<<<<< HEAD
 		openrtb_ext.BidderGothamads:         gothamads.Builder,
+=======
+		openrtb_ext.BidderGoldbach:          goldbach.Builder,
+>>>>>>> 8619d9f5 (Gothamads: Rename to intenze (#4333))
 		openrtb_ext.BidderGrid:              grid.Builder,
 		openrtb_ext.BidderGumGum:            gumgum.Builder,
 		openrtb_ext.BidderHuaweiAds:         huaweiads.Builder,
@@ -387,6 +396,7 @@ func newAdapterBuilders() map[openrtb_ext.BidderName]adapters.Builder {
 		openrtb_ext.BidderInfyTV:            infytv.Builder,
 		openrtb_ext.BidderInMobi:            inmobi.Builder,
 		openrtb_ext.BidderInsticator:        insticator.Builder,
+		openrtb_ext.BidderIntenze:           intenze.Builder,
 		openrtb_ext.BidderInteractiveoffers: interactiveoffers.Builder,
 		openrtb_ext.BidderIntertech:         intertech.Builder,
 		openrtb_ext.BidderInvibes:           invibes.Builder,
