@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/golang/glog"
 )
 
 type Signature struct {
@@ -70,11 +73,20 @@ func (f *httpFetcher) Fetch(ctx context.Context, body []byte) ([]SignatureWrappe
 
 	req.Header.Set("Content-Type", "application/json")
 
+	start := time.Now()
 	resp, err := f.client.Do(req)
+	elapsed := time.Since(start)
+
 	if err != nil {
+		logFetchError(ctx, err, elapsed)
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
+
+	// Log slow but successful requests (near-misses)
+	if elapsed > 40*time.Millisecond {
+		glog.Warningf("SIS fetch slow: elapsed=%v, status=%d", elapsed, resp.StatusCode)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -95,4 +107,30 @@ func (f *httpFetcher) Fetch(ctx context.Context, body []byte) ([]SignatureWrappe
 	}
 
 	return signatures, nil
+}
+
+func logFetchError(ctx context.Context, err error, elapsed time.Duration) {
+	ctxErr := ctx.Err()
+	ctxStatus := "active"
+	if ctxErr != nil {
+		if errors.Is(ctxErr, context.DeadlineExceeded) {
+			ctxStatus = "deadline_exceeded"
+		} else if errors.Is(ctxErr, context.Canceled) {
+			ctxStatus = "canceled"
+		}
+	}
+
+	errType := fmt.Sprintf("%T", err)
+
+	// Unwrap to get the root cause
+	var netErr *net.OpError
+	var rootCause string
+	if errors.As(err, &netErr) {
+		rootCause = fmt.Sprintf("op=%s, net=%s, addr=%v, err=%v", netErr.Op, netErr.Net, netErr.Addr, netErr.Err)
+	} else {
+		rootCause = err.Error()
+	}
+
+	glog.Warningf("SIS fetch failed: type=%s, elapsed=%v, ctx=%s, cause=%s",
+		errType, elapsed, ctxStatus, rootCause)
 }
