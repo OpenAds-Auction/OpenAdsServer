@@ -12,7 +12,7 @@ RUN apt-get update && \
         git=1:2.34.1-1ubuntu1.15 \
         gcc=4:11.2.0-1ubuntu1 \
         build-essential=12.9ubuntu3 \
-        openssl=3.0.2-0ubuntu1.20 && \
+        openssl=3.0.2-0ubuntu1.* && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Download and verify Go binary with checksum validation
