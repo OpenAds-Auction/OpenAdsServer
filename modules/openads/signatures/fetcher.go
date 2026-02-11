@@ -3,12 +3,15 @@ package signatures
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"time"
+
+	"golang.org/x/net/http2"
 )
 
 type Signature struct {
@@ -37,13 +40,13 @@ func newFetcher(cfg *Config) (SignatureFetcher, error) {
 	switch cfg.Transport {
 	case TransportUDS:
 		client = &http.Client{
-			Transport: &http.Transport{
-				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			Transport: &http2.Transport{
+				AllowHTTP: true,
+				DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 					return (&net.Dialer{}).DialContext(ctx, "unix", cfg.BasePath)
 				},
-				MaxIdleConns:        10,
-				MaxIdleConnsPerHost: 10,
-				IdleConnTimeout:     60 * time.Second,
+				ReadIdleTimeout: 10 * time.Second,
+				PingTimeout:     5 * time.Second,
 			},
 		}
 		fetchURL = "http://unix/" + cfg.RequestPath

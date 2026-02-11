@@ -18,6 +18,8 @@ import (
 	"github.com/prebid/prebid-server/v3/openrtb_ext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 type mockFetcher struct {
@@ -849,35 +851,37 @@ func TestUDSIntegration(t *testing.T) {
 	defer listener.Close()
 	defer os.Remove(socketPath)
 
-	// Start HTTP server over UDS
+	// Start h2c server over UDS (HTTP/2 without TLS)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		var envelope signatureRequest
+		err = json.Unmarshal(body, &envelope)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"testbidder"}, envelope.DemandSources)
+
+		requestBodyJSON, err := json.Marshal(envelope.RequestBody)
+		require.NoError(t, err)
+
+		var bidRequest openrtb2.BidRequest
+		err = json.Unmarshal(requestBodyJSON, &bidRequest)
+		require.NoError(t, err)
+		assert.Equal(t, "test-request-id", bidRequest.ID)
+
+		w.WriteHeader(http.StatusOK)
+		response := []SignatureWrapper{
+			{Name: "testbidder", SIS: Signature{Envelope: "sig-1", Source: "source-1"}},
+		}
+		json.NewEncoder(w).Encode(response)
+	})
+
 	server := &http.Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, "POST", r.Method)
-			assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-
-			body, err := io.ReadAll(r.Body)
-			require.NoError(t, err)
-
-			var envelope signatureRequest
-			err = json.Unmarshal(body, &envelope)
-			require.NoError(t, err)
-
-			assert.Equal(t, []string{"testbidder"}, envelope.DemandSources)
-
-			requestBodyJSON, err := json.Marshal(envelope.RequestBody)
-			require.NoError(t, err)
-
-			var bidRequest openrtb2.BidRequest
-			err = json.Unmarshal(requestBodyJSON, &bidRequest)
-			require.NoError(t, err)
-			assert.Equal(t, "test-request-id", bidRequest.ID)
-
-			w.WriteHeader(http.StatusOK)
-			response := []SignatureWrapper{
-				{Name: "testbidder", SIS: Signature{Envelope: "sig-1", Source: "source-1"}},
-			}
-			json.NewEncoder(w).Encode(response)
-		}),
+		Handler: h2c.NewHandler(handler, &http2.Server{}),
 	}
 
 	go server.Serve(listener)
