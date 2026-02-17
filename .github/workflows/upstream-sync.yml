@@ -86,7 +86,7 @@ jobs:
             BRANCH="sync/upstream-pr-${PR_NUM}"
 
             # Skip if a PR already exists for this branch
-            EXISTING=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state all --json number --jq 'length')
+            EXISTING=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state open --json number --jq 'length')
             if [ "$EXISTING" -gt 0 ]; then
               echo "  ⏭ PR already exists for $BRANCH, skipping"
               LATEST_GOOD_SHA="$SHA"
