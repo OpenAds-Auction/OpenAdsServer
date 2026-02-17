@@ -131,6 +131,17 @@ jobs:
               continue
             fi
 
+            # Skip if the only changes are to .github/workflows/ (upstream CI, not relevant to fork)
+            CHANGED_FILES=$(git diff --name-only main)
+            NON_WORKFLOW_FILES=$(echo "$CHANGED_FILES" | grep -v '^\.github/workflows/' || true)
+            if [ -z "$NON_WORKFLOW_FILES" ]; then
+              echo "  ⏭ Only workflow files changed — skipping"
+              git checkout main
+              LATEST_GOOD_SHA="$SHA"
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
+
             git push origin "$BRANCH" --force
 
             # Build PR body
@@ -172,6 +183,9 @@ jobs:
             LATEST_GOOD_SHA="$SHA"
             CREATED=$((CREATED + 1))
             git checkout main
+
+            # Save progress after each successful PR so we don't re-process on restart
+            echo "{\"last_synced_sha\": \"${LATEST_GOOD_SHA}\", \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > "$STATE_FILE"
           done
 
           echo ""
@@ -180,8 +194,9 @@ jobs:
           echo "  Skipped: $SKIPPED"
           echo "  Failed:  $FAILED"
 
-          # Update state file
-          echo "{\"last_synced_sha\": \"${LATEST_GOOD_SHA}\", \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > "$STATE_FILE"
+          # Commit and push the final state
+          git checkout main
+          git pull origin main --rebase || true
           git add "$STATE_FILE"
           git commit -m "chore: update upstream sync state to ${LATEST_GOOD_SHA:0:8}" || true
           git push origin main
