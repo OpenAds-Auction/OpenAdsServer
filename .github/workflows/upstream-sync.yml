@@ -17,6 +17,8 @@ jobs:
         with:
           app-id: ${{ secrets.SYNC_APP_ID }}
           private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: OpenAds-Auction
+          repositories: OpenAdsServer
 
       - name: Checkout fork
         uses: actions/checkout@v4
