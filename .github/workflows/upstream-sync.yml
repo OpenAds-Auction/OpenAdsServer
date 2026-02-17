@@ -37,26 +37,13 @@ jobs:
           git remote add upstream https://github.com/prebid/prebid-server.git
           git fetch upstream master --no-tags
 
-      - name: Debug - check token and labels
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          echo "=== Token permissions ==="
-          curl -s -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${FORK_REPO}/installation \
-            2>&1 | jq '.permissions' || echo "Could not get permissions"
-
-          echo ""
-          echo "=== Labels on ${FORK_REPO} ==="
-          gh label list --repo "$FORK_REPO" || echo "Failed to list labels"
-
       - name: Cherry-pick each upstream PR
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         shell: bash
         run: |
-          set -euo pipefail
+          # Don't use set -e — we handle errors per-commit instead of aborting
+          set -uo pipefail
 
           # Read last-synced SHA (or default to current merge-base)
           if [ -f "$STATE_FILE" ]; then
@@ -79,6 +66,9 @@ jobs:
           echo "Found $COMMIT_COUNT new upstream commits"
 
           LATEST_GOOD_SHA="$LAST_SHA"
+          CREATED=0
+          SKIPPED=0
+          FAILED=0
 
           for SHA in $COMMITS; do
             MSG=$(git log -1 --format='%s' "$SHA")
@@ -99,19 +89,46 @@ jobs:
             if [ "$EXISTING" -gt 0 ]; then
               echo "  ⏭ PR already exists for $BRANCH, skipping"
               LATEST_GOOD_SHA="$SHA"
+              SKIPPED=$((SKIPPED + 1))
               continue
             fi
 
-            # Create branch off main and attempt cherry-pick
+            # Always start from a clean main
             git checkout main
+            git branch -D "$BRANCH" 2>/dev/null || true
             git checkout -b "$BRANCH"
 
+            # Attempt cherry-pick
             HAS_CONFLICT=false
-            if ! git cherry-pick "$SHA" --no-edit 2>/dev/null; then
+            CHERRY_PICK_RESULT=0
+            git cherry-pick "$SHA" --no-edit 2>/dev/null || CHERRY_PICK_RESULT=$?
+
+            if [ "$CHERRY_PICK_RESULT" -ne 0 ]; then
+              # Check if this is an empty cherry-pick (e.g., reverting a change
+              # that was never applied, or a change already present on main)
+              if git diff --cached --quiet 2>/dev/null && git diff --quiet 2>/dev/null; then
+                echo "  ⏭ Empty cherry-pick (no diff against main) — skipping"
+                git cherry-pick --abort 2>/dev/null || true
+                git checkout main
+                LATEST_GOOD_SHA="$SHA"
+                SKIPPED=$((SKIPPED + 1))
+                continue
+              fi
+
               HAS_CONFLICT=true
               echo "  ⚠ Cherry-pick conflict — creating draft PR"
               git add -A
               git commit --no-edit -m "Upstream PR #${PR_NUM}: ${MSG} (CONFLICTS)" || true
+            fi
+
+            # Check if there are actually any commits to push
+            # (handles edge case where cherry-pick produced nothing)
+            if [ "$(git rev-parse HEAD)" = "$(git rev-parse main)" ]; then
+              echo "  ⏭ No changes vs main after cherry-pick — skipping"
+              git checkout main
+              LATEST_GOOD_SHA="$SHA"
+              SKIPPED=$((SKIPPED + 1))
+              continue
             fi
 
             git push origin "$BRANCH" --force
@@ -124,7 +141,7 @@ jobs:
           Original PR: https://github.com/prebid/prebid-server/pull/${PR_NUM}"
             fi
 
-            # Create PR first (without labels)
+            # Create PR
             DRAFT_FLAG=""
             if [ "$HAS_CONFLICT" = true ]; then
               DRAFT_FLAG="--draft"
@@ -136,19 +153,32 @@ jobs:
               --body "$PR_BODY" \
               --head "$BRANCH" \
               --base main \
-              $DRAFT_FLAG)
+              $DRAFT_FLAG 2>&1) || {
+                echo "  ❌ Failed to create PR: $PR_URL"
+                git checkout main
+                LATEST_GOOD_SHA="$SHA"
+                FAILED=$((FAILED + 1))
+                continue
+              }
 
             echo "  ✅ Created PR: $PR_URL"
 
-            # Add labels separately (non-fatal)
+            # Add labels (non-fatal)
             gh pr edit "$PR_URL" --repo "$FORK_REPO" --add-label "upstream-sync" || echo "  ⚠ Could not add upstream-sync label"
             if [ "$HAS_CONFLICT" = true ]; then
               gh pr edit "$PR_URL" --repo "$FORK_REPO" --add-label "merge-conflict" || echo "  ⚠ Could not add merge-conflict label"
             fi
 
             LATEST_GOOD_SHA="$SHA"
+            CREATED=$((CREATED + 1))
             git checkout main
           done
+
+          echo ""
+          echo "━━━ Summary ━━━"
+          echo "  Created: $CREATED"
+          echo "  Skipped: $SKIPPED"
+          echo "  Failed:  $FAILED"
 
           # Update state file
           echo "{\"last_synced_sha\": \"${LATEST_GOOD_SHA}\", \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > "$STATE_FILE"
