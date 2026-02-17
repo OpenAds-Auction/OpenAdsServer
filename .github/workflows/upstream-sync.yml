@@ -6,6 +6,7 @@ on:
 
 env:
   STATE_FILE: .github/upstream-sync-state.json
+  FORK_REPO: OpenAds-Auction/OpenAdsServer
 
 jobs:
   sync:
@@ -19,15 +20,6 @@ jobs:
           private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
           owner: OpenAds-Auction
           repositories: OpenAdsServer
-
-      - name: Debug token permissions
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          curl -s -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/OpenAds-Auction/OpenAdsServer \
-            -I 2>&1 | grep -i "x-oauth-scopes\|x-accepted-oauth-scopes\|x-accepted-github-permissions"
 
       - name: Checkout fork
         uses: actions/checkout@v4
@@ -45,12 +37,19 @@ jobs:
           git remote add upstream https://github.com/prebid/prebid-server.git
           git fetch upstream master --no-tags
 
-      - name: Debug - list repo labels
+      - name: Debug - check token and labels
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          echo "=== Labels visible to this token ==="
-          gh label list || echo "Failed to list labels"
+          echo "=== Token permissions ==="
+          curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${FORK_REPO}/installation \
+            2>&1 | jq '.permissions' || echo "Could not get permissions"
+
+          echo ""
+          echo "=== Labels on ${FORK_REPO} ==="
+          gh label list --repo "$FORK_REPO" || echo "Failed to list labels"
 
       - name: Cherry-pick each upstream PR
         env:
@@ -96,7 +95,7 @@ jobs:
             BRANCH="sync/upstream-pr-${PR_NUM}"
 
             # Skip if a PR already exists for this branch
-            EXISTING=$(gh pr list --head "$BRANCH" --state all --json number --jq 'length')
+            EXISTING=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state all --json number --jq 'length')
             if [ "$EXISTING" -gt 0 ]; then
               echo "  ⏭ PR already exists for $BRANCH, skipping"
               LATEST_GOOD_SHA="$SHA"
@@ -125,13 +124,14 @@ jobs:
           Original PR: https://github.com/prebid/prebid-server/pull/${PR_NUM}"
             fi
 
-            # Create PR first (without labels so creation doesn't fail)
+            # Create PR first (without labels)
             DRAFT_FLAG=""
             if [ "$HAS_CONFLICT" = true ]; then
               DRAFT_FLAG="--draft"
             fi
 
             PR_URL=$(gh pr create \
+              --repo "$FORK_REPO" \
               --title "$PR_TITLE" \
               --body "$PR_BODY" \
               --head "$BRANCH" \
@@ -140,10 +140,10 @@ jobs:
 
             echo "  ✅ Created PR: $PR_URL"
 
-            # Add labels separately (non-fatal if this fails)
-            gh pr edit "$PR_URL" --add-label "upstream-sync" || echo "  ⚠ Could not add upstream-sync label"
+            # Add labels separately (non-fatal)
+            gh pr edit "$PR_URL" --repo "$FORK_REPO" --add-label "upstream-sync" || echo "  ⚠ Could not add upstream-sync label"
             if [ "$HAS_CONFLICT" = true ]; then
-              gh pr edit "$PR_URL" --add-label "merge-conflict" || echo "  ⚠ Could not add merge-conflict label"
+              gh pr edit "$PR_URL" --repo "$FORK_REPO" --add-label "merge-conflict" || echo "  ⚠ Could not add merge-conflict label"
             fi
 
             LATEST_GOOD_SHA="$SHA"
