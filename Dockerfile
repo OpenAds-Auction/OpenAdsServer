@@ -13,6 +13,7 @@ RUN apt-get update && \
         gcc \
         build-essential \
         openssl && \
+    dpkg-query -W -f='${Package}=${Version}\n' | sort > /build-packages.txt && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Download and verify Go binary with checksum validation
@@ -87,6 +88,7 @@ LABEL org.opencontainers.image.authors="openads-eng@thetradedesk.com"
 WORKDIR /usr/local/bin/
 
 COPY --from=build /artifacts /artifacts
+COPY --from=build /build-packages.txt /artifacts/build-packages.txt
 COPY --from=build /app/prebid-server/openads /usr/local/bin/openads
 RUN chmod a+xr /usr/local/bin/openads
 COPY --from=build /app/prebid-server/static static/
@@ -99,6 +101,7 @@ RUN apt-get update && \
         ca-certificates \
         mtr \
         libatomic1 && \
+    dpkg-query -W -f='${Package}=${Version}\n' | sort > /artifacts/runtime-packages.txt && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN addgroup --system --gid 2001 prebidgroup && adduser --system --uid 1001 --ingroup prebidgroup prebid
 USER prebid
