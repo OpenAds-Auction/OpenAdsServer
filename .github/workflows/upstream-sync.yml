@@ -85,16 +85,10 @@ jobs:
 
             BRANCH="sync/upstream-pr-${PR_NUM}"
 
-            # Skip if:
-            #   - An open PR exists (already being reviewed)
-            #   - A merged PR exists (already integrated)
-            #   - A closed PR with 'skip-upstream' label exists (explicitly rejected)
-            # Closed PRs WITHOUT 'skip-upstream' get re-created (retry after conflict fix).
-            OPEN_COUNT=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state open --json number --jq 'length')
-            MERGED_COUNT=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state merged --json number --jq 'length')
-            REJECTED_COUNT=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state closed --label "skip-upstream" --json number --jq 'length')
-            if [ "$OPEN_COUNT" -gt 0 ] || [ "$MERGED_COUNT" -gt 0 ] || [ "$REJECTED_COUNT" -gt 0 ]; then
-              echo "  ⏭ Open, merged, or rejected PR exists for $BRANCH, skipping"
+            # Skip if any PR (open, merged, or closed) already exists for this branch
+            EXISTING=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state all --json number --jq 'length')
+            if [ "$EXISTING" -gt 0 ]; then
+              echo "  ⏭ PR already exists for $BRANCH, skipping"
               LATEST_GOOD_SHA="$SHA"
               SKIPPED=$((SKIPPED + 1))
               continue
