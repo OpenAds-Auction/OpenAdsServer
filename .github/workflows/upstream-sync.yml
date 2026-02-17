@@ -6,7 +6,7 @@ on:
 
 env:
   FORK_REPO: OpenAds-Auction/OpenAdsServer
-  STATE_TAG: upstream-sync/last-processed
+  STATE_VAR: UPSTREAM_SYNC_LAST_SHA
 
 jobs:
   sync:
@@ -36,7 +36,6 @@ jobs:
         run: |
           git remote add upstream https://github.com/prebid/prebid-server.git
           git fetch upstream master --no-tags
-          git fetch origin --tags
 
       - name: Cherry-pick each upstream PR
         env:
@@ -46,13 +45,13 @@ jobs:
           # Don't use set -e — we handle errors per-commit instead of aborting
           set -uo pipefail
 
-          # Read last-synced SHA from tag (or fall back to merge-base)
-          if git rev-parse "$STATE_TAG" >/dev/null 2>&1; then
-            LAST_SHA=$(git rev-parse "$STATE_TAG")
-            echo "Resuming from tag $STATE_TAG: $LAST_SHA"
-          else
+          # Read last-synced SHA from repo variable (or fall back to merge-base)
+          LAST_SHA=$(gh variable get "$STATE_VAR" --repo "$FORK_REPO" 2>/dev/null || true)
+          if [ -z "$LAST_SHA" ]; then
             LAST_SHA=$(git merge-base HEAD upstream/master)
-            echo "No state tag found — using merge-base: $LAST_SHA"
+            echo "No state variable found — using merge-base: $LAST_SHA"
+          else
+            echo "Resuming from variable $STATE_VAR: $LAST_SHA"
           fi
 
           UPSTREAM_HEAD=$(git rev-parse upstream/master)
@@ -193,9 +192,8 @@ jobs:
           echo "  Skipped: $SKIPPED"
           echo "  Failed:  $FAILED"
 
-          # Update state tag (force-push to move the tag to the latest processed SHA)
+          # Save state as a repo variable (no git push needed)
           if [ "$LATEST_GOOD_SHA" != "$LAST_SHA" ]; then
-            git tag -f "$STATE_TAG" "$LATEST_GOOD_SHA"
-            git push origin "$STATE_TAG" --force
-            echo "Updated state tag $STATE_TAG → ${LATEST_GOOD_SHA:0:8}"
+            gh variable set "$STATE_VAR" --repo "$FORK_REPO" --body "$LATEST_GOOD_SHA"
+            echo "Updated $STATE_VAR → ${LATEST_GOOD_SHA:0:8}"
           fi
