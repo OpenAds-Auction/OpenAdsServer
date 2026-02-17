@@ -1,0 +1,138 @@
+name: Upstream Per-PR Sync
+on:
+  schedule:
+    - cron: '0 6 * * 1-5'   # Weekdays at 6 AM UTC
+  workflow_dispatch:          # Manual trigger
+
+env:
+  STATE_FILE: .github/upstream-sync-state.json
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      # ── Authenticate as the OpenAds Sync Bot GitHub App ──
+      # This generates a short-lived installation token that the workflow
+      # uses for all git and GitHub API operations. PRs and commits show
+      # up as "OpenAds Sync Bot" rather than any individual's account.
+      # See the "GitHub App Setup" section for how to register the app
+      # and add these secrets.
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Configure git
+        run: |
+          git config user.name "openads-sync-bot"
+          git config user.email "openads-sync@thetradedesk.com"
+
+      - name: Fetch upstream (prebid/prebid-server master)
+        run: |
+          git remote add upstream https://github.com/prebid/prebid-server.git
+          git fetch upstream master --no-tags
+
+      - name: Cherry-pick each upstream PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Read last-synced SHA (or default to current merge-base)
+          if [ -f "$STATE_FILE" ]; then
+            LAST_SHA=$(jq -r '.last_synced_sha' "$STATE_FILE")
+          else
+            LAST_SHA=$(git merge-base HEAD upstream/master)
+            echo "No state file found — using merge-base: $LAST_SHA"
+          fi
+
+          UPSTREAM_HEAD=$(git rev-parse upstream/master)
+
+          if [ "$LAST_SHA" = "$UPSTREAM_HEAD" ]; then
+            echo "✅ No new upstream commits."
+            exit 0
+          fi
+
+          # List merge/squash commits (first-parent gives us one commit per merged PR)
+          COMMITS=$(git rev-list --first-parent --reverse "${LAST_SHA}..${UPSTREAM_HEAD}")
+          COMMIT_COUNT=$(echo "$COMMITS" | wc -w)
+          echo "Found $COMMIT_COUNT new upstream commits"
+
+          LATEST_GOOD_SHA="$LAST_SHA"
+
+          for SHA in $COMMITS; do
+            MSG=$(git log -1 --format='%s' "$SHA")
+            echo ""
+            echo "━━━ Processing: ${SHA:0:8} — $MSG ━━━"
+
+            # Extract upstream PR number from commit message: "... (#1234)"
+            PR_NUM=$(echo "$MSG" | grep -oP '#\K\d+' | tail -1 || true)
+            if [ -z "$PR_NUM" ]; then
+              echo "  ⚠ Could not extract PR number, using commit SHA as identifier"
+              PR_NUM="commit-${SHA:0:8}"
+            fi
+
+            BRANCH="sync/upstream-pr-${PR_NUM}"
+
+            # Skip if a PR already exists for this branch
+            EXISTING=$(gh pr list --head "$BRANCH" --state all --json number --jq 'length')
+            if [ "$EXISTING" -gt 0 ]; then
+              echo "  ⏭ PR already exists for $BRANCH, skipping"
+              LATEST_GOOD_SHA="$SHA"
+              continue
+            fi
+
+            # Create branch off main and attempt cherry-pick
+            git checkout main
+            git checkout -b "$BRANCH"
+
+            HAS_CONFLICT=false
+            if ! git cherry-pick "$SHA" --no-edit 2>/dev/null; then
+              HAS_CONFLICT=true
+              echo "  ⚠ Cherry-pick conflict — creating draft PR"
+              # Stage conflict markers so we can commit and push
+              git add -A
+              git commit --no-edit -m "Upstream PR #${PR_NUM}: ${MSG} (CONFLICTS)" || true
+            fi
+
+            git push origin "$BRANCH" --force
+
+            # Build PR body
+            PR_TITLE="Upstream PR #${PR_NUM}: ${MSG}"
+            PR_BODY="Cherry-picked from upstream [\`${SHA:0:8}\`](https://github.com/prebid/prebid-server/commit/${SHA})"
+            if [[ "$PR_NUM" != commit-* ]]; then
+              PR_BODY="${PR_BODY}
+          Original PR: https://github.com/prebid/prebid-server/pull/${PR_NUM}"
+            fi
+
+            # Open PR (draft if conflicts)
+            PR_FLAGS="--label upstream-sync"
+            if [ "$HAS_CONFLICT" = true ]; then
+              PR_FLAGS="$PR_FLAGS --draft --label merge-conflict"
+            fi
+
+            gh pr create \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --head "$BRANCH" \
+              --base main \
+              $PR_FLAGS
+
+            LATEST_GOOD_SHA="$SHA"
+            git checkout main
+          done
+
+          # Update state file
+          echo "{\"last_synced_sha\": \"${LATEST_GOOD_SHA}\", \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > "$STATE_FILE"
+          git add "$STATE_FILE"
+          git commit -m "chore: update upstream sync state to ${LATEST_GOOD_SHA:0:8}" || true
+          git push origin main
