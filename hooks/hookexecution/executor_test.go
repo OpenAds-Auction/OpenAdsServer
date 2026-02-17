@@ -1101,6 +1101,42 @@ func TestExecuteBidderRequestStage(t *testing.T) {
 			},
 		},
 		{
+			description:            "Request rejected when hook times out and reject_on_timeout is true",
+			givenBidderRequest:     &openrtb2.BidRequest{ID: "some-id", User: &openrtb2.User{ID: "user-id"}},
+			givenPlanBuilder:       TestWithTimeoutRejectPlanBuilder{},
+			expectedBidderRequest:  expectedBidderRequest,
+			expectedReject:         &RejectError{0, HookID{ModuleCode: "foobar", HookImplCode: "foo"}, hooks.StageBidderRequest.String()},
+			expectedModuleContexts: foobarModuleCtx,
+			expectedStageOutcomes: []StageOutcome{
+				{
+					ExecutionTime: ExecutionTime{},
+					Entity:        entity(bidderName),
+					Stage:         hooks.StageBidderRequest.String(),
+					Groups: []GroupOutcome{
+						{
+							ExecutionTime: ExecutionTime{},
+							InvocationResults: []HookOutcome{
+								{
+									ExecutionTime: ExecutionTime{},
+									AnalyticsTags: hookanalytics.Analytics{},
+									HookID:        HookID{ModuleCode: "foobar", HookImplCode: "foo"},
+									Status:        StatusTimeout,
+									Action:        ActionReject,
+									Message:       "",
+									DebugMessages: nil,
+									Errors: []string{
+										"Hook execution timeout",
+										`Module foobar (hook: foo) rejected request with code 0 at bidder_request stage`,
+									},
+									Warnings: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			description:           "Modules contexts are preserved and correct",
 			givenBidderRequest:    &openrtb2.BidRequest{ID: "some-id", User: &openrtb2.User{ID: "user-id"}},
 			givenPlanBuilder:      TestWithModuleContextsPlanBuilder{},
@@ -2886,6 +2922,22 @@ func (e TestWithTimeoutPlanBuilder) PlanForExitpointStage(_ string, _ *config.Ac
 			Timeout: 1 * time.Millisecond,
 			Hooks: []hooks.HookWrapper[hookstage.Exitpoint]{
 				{Module: "foobar", Code: "bar", Hook: mockUpdateResponseHook{}},
+			},
+		},
+	}
+}
+
+type TestWithTimeoutRejectPlanBuilder struct {
+	hooks.EmptyPlanBuilder
+}
+
+func (e TestWithTimeoutRejectPlanBuilder) PlanForBidderRequestStage(_ string, _ *config.Account) hooks.Plan[hookstage.BidderRequest] {
+	return hooks.Plan[hookstage.BidderRequest]{
+		hooks.Group[hookstage.BidderRequest]{
+			Timeout:         10 * time.Millisecond,
+			RejectOnTimeout: true,
+			Hooks: []hooks.HookWrapper[hookstage.BidderRequest]{
+				{Module: "foobar", Code: "foo", Hook: mockTimeoutHook{}},
 			},
 		},
 	}
