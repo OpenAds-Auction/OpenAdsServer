@@ -11,12 +11,6 @@ jobs:
   sync:
     runs-on: ubuntu-22.04
     steps:
-      # ── Authenticate as the OpenAds Sync Bot GitHub App ──
-      # This generates a short-lived installation token that the workflow
-      # uses for all git and GitHub API operations. PRs and commits show
-      # up as "OpenAds Sync Bot" rather than any individual's account.
-      # See the "GitHub App Setup" section for how to register the app
-      # and add these secrets.
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -39,6 +33,13 @@ jobs:
         run: |
           git remote add upstream https://github.com/prebid/prebid-server.git
           git fetch upstream master --no-tags
+
+      - name: Debug - list repo labels
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "=== Labels visible to this token ==="
+          gh label list || echo "Failed to list labels"
 
       - name: Cherry-pick each upstream PR
         env:
@@ -99,7 +100,6 @@ jobs:
             if ! git cherry-pick "$SHA" --no-edit 2>/dev/null; then
               HAS_CONFLICT=true
               echo "  ⚠ Cherry-pick conflict — creating draft PR"
-              # Stage conflict markers so we can commit and push
               git add -A
               git commit --no-edit -m "Upstream PR #${PR_NUM}: ${MSG} (CONFLICTS)" || true
             fi
@@ -114,18 +114,26 @@ jobs:
           Original PR: https://github.com/prebid/prebid-server/pull/${PR_NUM}"
             fi
 
-            # Open PR (draft if conflicts)
-            PR_FLAGS="--label upstream-sync"
+            # Create PR first (without labels so creation doesn't fail)
+            DRAFT_FLAG=""
             if [ "$HAS_CONFLICT" = true ]; then
-              PR_FLAGS="$PR_FLAGS --draft --label merge-conflict"
+              DRAFT_FLAG="--draft"
             fi
 
-            gh pr create \
+            PR_URL=$(gh pr create \
               --title "$PR_TITLE" \
               --body "$PR_BODY" \
               --head "$BRANCH" \
               --base main \
-              $PR_FLAGS
+              $DRAFT_FLAG)
+
+            echo "  ✅ Created PR: $PR_URL"
+
+            # Add labels separately (non-fatal if this fails)
+            gh pr edit "$PR_URL" --add-label "upstream-sync" || echo "  ⚠ Could not add upstream-sync label"
+            if [ "$HAS_CONFLICT" = true ]; then
+              gh pr edit "$PR_URL" --add-label "merge-conflict" || echo "  ⚠ Could not add merge-conflict label"
+            fi
 
             LATEST_GOOD_SHA="$SHA"
             git checkout main
