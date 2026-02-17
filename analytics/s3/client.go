@@ -22,6 +22,13 @@ func NewS3Client(cfg config.S3Analytics) (S3Client, error) {
 		return nil, err
 	}
 
-	client := s3.NewFromConfig(awsCfg)
+	var clientOpts []func(*s3.Options)
+	if cfg.UsePathStyle {
+		clientOpts = append(clientOpts, func(o *s3.Options) {
+			o.UsePathStyle = true
+		})
+	}
+
+	client := s3.NewFromConfig(awsCfg, clientOpts...)
 	return client, nil
 }

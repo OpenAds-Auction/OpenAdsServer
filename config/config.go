@@ -544,6 +544,7 @@ type S3Analytics struct {
 	Buffers       S3AnalyticsBuffer `mapstructure:"buffers"`
 	FallbackDir   string            `mapstructure:"fallback_dir"`
 	UploadTimeout string            `mapstructure:"upload_timeout"`
+	UsePathStyle  bool              `mapstructure:"use_path_style"`
 }
 
 type S3AnalyticsBuffer struct {
@@ -1209,6 +1210,7 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("analytics.s3.buffers.size", "10MB")
 	v.SetDefault("analytics.s3.buffers.timeout", "15m")
 	v.SetDefault("analytics.s3.upload_timeout", "2s")
+	v.SetDefault("analytics.s3.use_path_style", false)
 	v.SetDefault("analytics.auction_audit.enabled", false)
 	v.SetDefault("analytics.auction_audit.environment", "prod")
 	v.SetDefault("analytics.auction_audit.max_filters", 1000)
