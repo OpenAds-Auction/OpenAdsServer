@@ -4,15 +4,16 @@ FROM ubuntu:22.04 AS build
 ARG GO_VERSION=1.23.0
 ARG GO_CHECKSUM=905a297f19ead44780548933e0ff1a1b86e8327bb459e92f9c0012569f76f5e3
 
-# Install system dependencies with pinned versions
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        wget=1.21.2-2ubuntu1.1 \
-        ca-certificates=20240203~22.04.1 \
-        git=1:2.34.1-1ubuntu1.15 \
-        gcc=4:11.2.0-1ubuntu1 \
-        build-essential=12.9ubuntu3 \
-        openssl=3.0.2-0ubuntu1.* && \
+        wget \
+        ca-certificates \
+        git \
+        gcc \
+        build-essential \
+        openssl && \
+    dpkg-query -W -f='${Package}=${Version}\n' | sort > /build-packages.txt && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Download and verify Go binary with checksum validation
@@ -87,18 +88,20 @@ LABEL org.opencontainers.image.authors="openads-eng@thetradedesk.com"
 WORKDIR /usr/local/bin/
 
 COPY --from=build /artifacts /artifacts
+COPY --from=build /build-packages.txt /artifacts/build-packages.txt
 COPY --from=build /app/prebid-server/openads /usr/local/bin/openads
 RUN chmod a+xr /usr/local/bin/openads
 COPY --from=build /app/prebid-server/static static/
 COPY --from=build /app/prebid-server/stored_requests/data stored_requests/data
 RUN chmod -R a+r static/ stored_requests/data
 
-# Installing runtime dependencies with pinned versions
+# Install runtime dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        ca-certificates=20240203~22.04.1 \
-        mtr=0.95-1 \
-        libatomic1=12.3.0-1ubuntu1~22.04.2 && \
+        ca-certificates \
+        mtr \
+        libatomic1 && \
+    dpkg-query -W -f='${Package}=${Version}\n' | sort > /artifacts/runtime-packages.txt && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN addgroup --system --gid 2001 prebidgroup && adduser --system --uid 1001 --ingroup prebidgroup prebid
 USER prebid
