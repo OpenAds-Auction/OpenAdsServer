@@ -5,8 +5,8 @@ on:
   workflow_dispatch:          # Manual trigger
 
 env:
-  STATE_FILE: .github/upstream-sync-state.json
   FORK_REPO: OpenAds-Auction/OpenAdsServer
+  STATE_VAR: UPSTREAM_SYNC_LAST_SHA
 
 jobs:
   sync:
@@ -45,12 +45,13 @@ jobs:
           # Don't use set -e — we handle errors per-commit instead of aborting
           set -uo pipefail
 
-          # Read last-synced SHA (or default to current merge-base)
-          if [ -f "$STATE_FILE" ]; then
-            LAST_SHA=$(jq -r '.last_synced_sha' "$STATE_FILE")
-          else
+          # Read last-synced SHA from repo variable (or fall back to merge-base)
+          LAST_SHA=$(gh variable get "$STATE_VAR" --repo "$FORK_REPO" 2>/dev/null || true)
+          if [ -z "$LAST_SHA" ]; then
             LAST_SHA=$(git merge-base HEAD upstream/master)
-            echo "No state file found — using merge-base: $LAST_SHA"
+            echo "No state variable found — using merge-base: $LAST_SHA"
+          else
+            echo "Resuming from variable $STATE_VAR: $LAST_SHA"
           fi
 
           UPSTREAM_HEAD=$(git rev-parse upstream/master)
@@ -84,7 +85,7 @@ jobs:
 
             BRANCH="sync/upstream-pr-${PR_NUM}"
 
-            # Skip if a PR already exists for this branch
+            # Skip if any PR (open, merged, or closed) already exists for this branch
             EXISTING=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state all --json number --jq 'length')
             if [ "$EXISTING" -gt 0 ]; then
               echo "  ⏭ PR already exists for $BRANCH, skipping"
@@ -183,9 +184,6 @@ jobs:
             LATEST_GOOD_SHA="$SHA"
             CREATED=$((CREATED + 1))
             git checkout main
-
-            # Save progress after each successful PR so we don't re-process on restart
-            echo "{\"last_synced_sha\": \"${LATEST_GOOD_SHA}\", \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > "$STATE_FILE"
           done
 
           echo ""
@@ -194,9 +192,8 @@ jobs:
           echo "  Skipped: $SKIPPED"
           echo "  Failed:  $FAILED"
 
-          # Commit and push the final state
-          git checkout main
-          git pull origin main --rebase || true
-          git add "$STATE_FILE"
-          git commit -m "chore: update upstream sync state to ${LATEST_GOOD_SHA:0:8}" || true
-          git push origin main
+          # Save state as a repo variable (no git push needed)
+          if [ "$LATEST_GOOD_SHA" != "$LAST_SHA" ]; then
+            gh variable set "$STATE_VAR" --repo "$FORK_REPO" --body "$LATEST_GOOD_SHA"
+            echo "Updated $STATE_VAR → ${LATEST_GOOD_SHA:0:8}"
+          fi
