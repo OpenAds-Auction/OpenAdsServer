@@ -141,8 +141,12 @@ jobs:
               | grep -v '^static/bidder-params/' \
               | grep -v '^static/bidder-info/' \
               | grep -v '^exchange/adapter_builders\.go$' \
+              | grep -v '^exchange/adapter_util\.go$' \
               | grep -v '^openrtb_ext/bidders\.go$' \
+              | grep -v '^openrtb_ext/bidders_validate_test\.go$' \
               | grep -v '^openrtb_ext/imp_[^/]*\.go$' \
+              | grep -v '^macros/macros\.go$' \
+              | grep -v '^config/bidderinfo\.go$' \
               || true)
             if [ -z "$RELEVANT_FILES" ]; then
               echo "  ⏭ Only workflow/adapter files changed — skipping"
