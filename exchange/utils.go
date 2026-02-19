@@ -895,31 +895,26 @@ func randomizeList(list []openrtb_ext.BidderName) {
 }
 
 func getExtCacheInstructions(requestExtPrebid *openrtb_ext.ExtRequestPrebid) extCacheInstructions {
-	//returnCreative defaults to true
-	cacheInstructions := extCacheInstructions{returnCreative: true}
-	foundBidsRC := false
-	foundVastRC := false
+	// returnCreative default to true for both bids and vast
+	cacheInstructions := extCacheInstructions{
+		returnCreativeBids: true,
+		returnCreativeVast: true,
+	}
 
 	if requestExtPrebid != nil && requestExtPrebid.Cache != nil {
 		if requestExtPrebid.Cache.Bids != nil {
 			cacheInstructions.cacheBids = true
 			if requestExtPrebid.Cache.Bids.ReturnCreative != nil {
-				cacheInstructions.returnCreative = *requestExtPrebid.Cache.Bids.ReturnCreative
-				foundBidsRC = true
+				cacheInstructions.returnCreativeBids = *requestExtPrebid.Cache.Bids.ReturnCreative
 			}
 		}
 
 		if requestExtPrebid.Cache.VastXML != nil {
 			cacheInstructions.cacheVAST = true
 			if requestExtPrebid.Cache.VastXML.ReturnCreative != nil {
-				cacheInstructions.returnCreative = *requestExtPrebid.Cache.VastXML.ReturnCreative
-				foundVastRC = true
+				cacheInstructions.returnCreativeVast = *requestExtPrebid.Cache.VastXML.ReturnCreative
 			}
 		}
-	}
-
-	if foundBidsRC && foundVastRC {
-		cacheInstructions.returnCreative = *requestExtPrebid.Cache.Bids.ReturnCreative || *requestExtPrebid.Cache.VastXML.ReturnCreative
 	}
 
 	return cacheInstructions
