@@ -143,11 +143,20 @@ jobs:
               continue
             fi
 
-            # Check if the only changes are adapter-only file paths
+            # Skip if the only changes are to .github/workflows/ (upstream CI, not relevant to fork)
             CHANGED_FILES=$(git diff --name-only main)
+            NON_WORKFLOW_FILES=$(echo "$CHANGED_FILES" | grep -v '^\.github/workflows/' || true)
+            if [ -z "$NON_WORKFLOW_FILES" ]; then
+              echo "  ⏭ Only workflow files changed — skipping"
+              git checkout main
+              LATEST_GOOD_SHA="$SHA"
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
+
+            # Check if the only changes are adapter-only file paths
             PROBABLY_ADAPTER_ONLY=false
-            RELEVANT_FILES=$(echo "$CHANGED_FILES" \
-              | grep -v '^\.github/workflows/' \
+            RELEVANT_FILES=$(echo "$NON_WORKFLOW_FILES" \
               | grep -v '^adapters/' \
               | grep -v '^static/bidder-params/' \
               | grep -v '^static/bidder-info/' \
