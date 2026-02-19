@@ -135,7 +135,15 @@ jobs:
             # Skip if the only changes are to .github/workflows/ (upstream CI, not relevant to fork)
             # Skip if the only changes are to irrelevant paths (upstream CI, adapter-only changes)
             CHANGED_FILES=$(git diff --name-only main)
-            RELEVANT_FILES=$(echo "$CHANGED_FILES" | grep -v '^\.github/workflows/' | grep -v '^adapters/' | grep -v '^static/bidder-params/' | grep -v '^static/bidder-info/' || true)
+            RELEVANT_FILES=$(echo "$CHANGED_FILES" \
+              | grep -v '^\.github/workflows/' \
+              | grep -v '^adapters/' \
+              | grep -v '^static/bidder-params/' \
+              | grep -v '^static/bidder-info/' \
+              | grep -v '^exchange/adapter_builders\.go$' \
+              | grep -v '^openrtb_ext/bidders\.go$' \
+              | grep -v '^openrtb_ext/imp_[^/]*\.go$' \
+              || true)
             if [ -z "$RELEVANT_FILES" ]; then
               echo "  ⏭ Only workflow/adapter files changed — skipping"
               git checkout main
