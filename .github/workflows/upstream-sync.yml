@@ -85,6 +85,17 @@ jobs:
 
             BRANCH="sync/upstream-pr-${PR_NUM}"
 
+            # Check if upstream PR is labeled as adapter-only — skip entirely if so
+            if [[ "$PR_NUM" != commit-* ]]; then
+              UPSTREAM_LABELS=$(gh api "repos/prebid/prebid-server/pulls/${PR_NUM}" --jq '[.labels[].name] | join(",")' 2>/dev/null || true)
+              if echo ",$UPSTREAM_LABELS," | grep -qi ",adapter,"; then
+                echo "  ⏭ Upstream PR has adapter label ($UPSTREAM_LABELS) — skipping"
+                LATEST_GOOD_SHA="$SHA"
+                SKIPPED=$((SKIPPED + 1))
+                continue
+              fi
+            fi
+
             # Skip if any PR (open, merged, or closed) already exists for this branch
             EXISTING=$(gh pr list --repo "$FORK_REPO" --head "$BRANCH" --state all --json number --jq 'length')
             if [ "$EXISTING" -gt 0 ]; then
@@ -132,9 +143,9 @@ jobs:
               continue
             fi
 
-            # Skip if the only changes are to .github/workflows/ (upstream CI, not relevant to fork)
-            # Skip if the only changes are to irrelevant paths (upstream CI, adapter-only changes)
+            # Check if the only changes are adapter-only file paths
             CHANGED_FILES=$(git diff --name-only main)
+            PROBABLY_ADAPTER_ONLY=false
             RELEVANT_FILES=$(echo "$CHANGED_FILES" \
               | grep -v '^\.github/workflows/' \
               | grep -v '^adapters/' \
@@ -149,11 +160,8 @@ jobs:
               | grep -v '^config/bidderinfo\.go$' \
               || true)
             if [ -z "$RELEVANT_FILES" ]; then
-              echo "  ⏭ Only workflow/adapter files changed — skipping"
-              git checkout main
-              LATEST_GOOD_SHA="$SHA"
-              SKIPPED=$((SKIPPED + 1))
-              continue
+              echo "  🏷 Only adapter files changed — will label probably-adapter-only"
+              PROBABLY_ADAPTER_ONLY=true
             fi
 
             git push origin "$BRANCH" --force
@@ -192,6 +200,9 @@ jobs:
             gh pr edit "$PR_URL" --repo "$FORK_REPO" --add-label "upstream-sync" || echo "  ⚠ Could not add upstream-sync label"
             if [ "$HAS_CONFLICT" = true ]; then
               gh pr edit "$PR_URL" --repo "$FORK_REPO" --add-label "merge-conflict" || echo "  ⚠ Could not add merge-conflict label"
+            fi
+            if [ "$PROBABLY_ADAPTER_ONLY" = true ]; then
+              gh pr edit "$PR_URL" --repo "$FORK_REPO" --add-label "probably-adapter-only" || echo "  ⚠ Could not add probably-adapter-only label"
             fi
 
             LATEST_GOOD_SHA="$SHA"
