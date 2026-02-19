@@ -52,6 +52,8 @@ type Plan[T any] []Group[T]
 type Group[T any] struct {
 	// Timeout specifies the max duration in milliseconds that a group of hooks is allowed to run.
 	Timeout time.Duration
+	// RejectOnTimeout indicates whether a hook timeout should cause request rejection.
+	RejectOnTimeout bool
 	// Hooks holds a slice of HookWrapper of a specific type.
 	Hooks []HookWrapper[T]
 }
@@ -202,8 +204,9 @@ func getPlan[T any](getHookFn hookFn[T], cfg config.HookExecutionPlan, endpoint 
 
 func getGroup[T any](getHookFn hookFn[T], cfg config.HookExecutionGroup) Group[T] {
 	group := Group[T]{
-		Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
-		Hooks:   make([]HookWrapper[T], 0, len(cfg.HookSequence)),
+		Timeout:         time.Duration(cfg.Timeout) * time.Millisecond,
+		RejectOnTimeout: cfg.RejectOnTimeout,
+		Hooks:           make([]HookWrapper[T], 0, len(cfg.HookSequence)),
 	}
 
 	for _, hookCfg := range cfg.HookSequence {
