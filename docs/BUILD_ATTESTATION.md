@@ -18,6 +18,25 @@ During Docker build, the following cryptographic signature generation occurs:
 6. **Output Public Key**: The public key is output to build logs
 7. **Cleanup**: Private key is securely deleted
 
+### Package Version Recording
+
+The Dockerfile does not pin specific package versions. Instead, the exact versions of all packages resolved during the build are recorded in text files included in the final image under `/artifacts/`:
+
+- **`/artifacts/build-packages.txt`** — packages installed in the build stage (wget, git, gcc, build-essential, openssl, etc.)
+- **`/artifacts/runtime-packages.txt`** — packages installed in the final runtime image (ca-certificates, mtr, libatomic1, etc.)
+
+If you need to determine which package versions were used in a particular build (e.g. for debugging, reproducibility, or auditing purposes), you can inspect these files:
+
+```bash
+# From a running container
+docker exec <container> cat /artifacts/build-packages.txt
+docker exec <container> cat /artifacts/runtime-packages.txt
+
+# Or copy them out of the image
+docker cp <container>:/artifacts/build-packages.txt ./
+docker cp <container>:/artifacts/runtime-packages.txt ./
+```
+
 ### Signature Payload Structure
 
 ```

@@ -41,8 +41,8 @@ func newFetcher(cfg *Config) (SignatureFetcher, error) {
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 					return (&net.Dialer{}).DialContext(ctx, "unix", cfg.BasePath)
 				},
-				MaxIdleConns:        10,
-				MaxIdleConnsPerHost: 10,
+				MaxIdleConns:        30,
+				MaxIdleConnsPerHost: 30,
 				IdleConnTimeout:     60 * time.Second,
 			},
 		}
