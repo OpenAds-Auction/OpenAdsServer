@@ -24,8 +24,9 @@ type HookExecutionPlan struct {
 type HookExecutionGroup struct {
 	// Timeout specified in milliseconds.
 	// Zero value marks the hook execution status with the "timeout" value.
-	Timeout      int `mapstructure:"timeout" json:"timeout"`
-	HookSequence []struct {
+	Timeout         int  `mapstructure:"timeout" json:"timeout"`
+	RejectOnTimeout bool `mapstructure:"reject_on_timeout" json:"reject_on_timeout"`
+	HookSequence    []struct {
 		// ModuleCode is a composite value in the format: {vendor_name}.{module_name}
 		ModuleCode string `mapstructure:"module_code" json:"module_code"`
 		// HookImplCode is an arbitrary value, used to identify hook when sending metrics, debug information, etc.
