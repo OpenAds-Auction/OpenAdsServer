@@ -130,7 +130,11 @@ func New(cfg *config.Configuration, rateConvertor *currency.RateConverter) (r *R
 
 	// For bid processing, we need both the hardcoded certificates and the certificates found in container's
 	// local file system
-	certPool := ssl.GetRootCAPool()
+	certPool, certPoolCreateErr := ssl.CreateCertPool(cfg.CertsUseSystem)
+	if certPoolCreateErr != nil {
+		glog.Infof("Could not load root certificates: %s \n", certPoolCreateErr.Error())
+	}
+
 	var readCertErr error
 	certPool, readCertErr = ssl.AppendPEMFileToRootCAPool(certPool, cfg.PemCertsFile)
 	if readCertErr != nil {
@@ -204,7 +208,8 @@ func New(cfg *config.Configuration, rateConvertor *currency.RateConverter) (r *R
 		syncerKeys = append(syncerKeys, k)
 	}
 
-	moduleDeps := moduledeps.ModuleDeps{HTTPClient: generalHttpClient, RateConvertor: rateConvertor}
+	normalizedGeoscopes := getNormalizedGeoscopes(cfg.BidderInfos)
+	moduleDeps := moduledeps.ModuleDeps{HTTPClient: generalHttpClient, RateConvertor: rateConvertor, Geoscope: normalizedGeoscopes}
 	repo, moduleStageNames, shutdownModules, err := modules.NewBuilder().Build(cfg.Hooks.Modules, moduleDeps)
 	if err != nil {
 		glog.Fatalf("Failed to init hook modules: %v", err)
@@ -302,6 +307,7 @@ func New(cfg *config.Configuration, rateConvertor *currency.RateConverter) (r *R
 		ExternalUrl:      cfg.ExternalURL,
 		RecaptchaSecret:  cfg.RecaptchaSecret,
 		PriorityGroups:   cfg.UserSync.PriorityGroups,
+		CertPool:         certPool,
 	}
 
 	r.GET("/setuid", endpoints.NewSetUIDEndpoint(cfg, syncersByBidder, gdprPermsBuilder, tcf2CfgBuilder, analyticsRunner, accounts, r.MetricsEngine))
@@ -403,4 +409,19 @@ func readDefaultRequestFromFile(defReqConfig config.DefReqConfig) []byte {
 	}
 
 	return defaultRequestJSON
+}
+
+func getNormalizedGeoscopes(bidderInfos config.BidderInfos) map[string][]string {
+	geoscopes := make(map[string][]string, len(bidderInfos))
+
+	for name, info := range bidderInfos {
+		if len(info.Geoscope) > 0 {
+			uppercasedGeoscopes := make([]string, len(info.Geoscope))
+			for i, scope := range info.Geoscope {
+				uppercasedGeoscopes[i] = strings.ToUpper(scope)
+			}
+			geoscopes[name] = uppercasedGeoscopes
+		}
+	}
+	return geoscopes
 }
