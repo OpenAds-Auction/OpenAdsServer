@@ -2085,8 +2085,12 @@ func TestCallRecordAdapterConnections(t *testing.T) {
 	mockMetricEngine.On("RecordAdapterConnections", expectedAdapterName, false, mock.MatchedBy(compareConnWaitTime)).Once()
 	mockMetricEngine.On("RecordOverheadTime", metrics.PreBidder, mock.Anything).Once()
 	mockMetricEngine.On("RecordBidderServerResponseTime", mock.Anything).Once()
+<<<<<<< HEAD
 	mockMetricEngine.On("RecordConnectionWant").Once()
 	mockMetricEngine.On("RecordConnectionGot").Once()
+=======
+	mockMetricEngine.On("RecordAdapterConnectionDialTime", mock.Anything, mock.Anything).Once()
+>>>>>>> 6a9b4b29 (Metrics: Add connection dial metrics by adapter (#4528))
 
 	// Run requestBid using an http.Client with a mock handler
 	bidder := AdaptBidder(bidderImpl, server.Client(), &config.Configuration{}, mockMetricEngine, openrtb_ext.BidderAppnexus, nil, "")
