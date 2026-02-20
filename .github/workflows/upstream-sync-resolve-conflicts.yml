@@ -1,0 +1,246 @@
+name: Upstream Sync — Resolve Conflicts
+on:
+  workflow_dispatch:          # Manual trigger only
+
+env:
+  FORK_REPO: OpenAds-Auction/OpenAdsServer
+
+jobs:
+  resolve-conflicts:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: OpenAds-Auction
+          repositories: OpenAdsServer
+
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Configure git
+        run: |
+          git config user.name "openads-sync-bot"
+          git config user.email "openads-sync@thetradedesk.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/prebid/prebid-server.git
+          git fetch upstream master --no-tags
+
+      - name: Resolve conflict PRs
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          # ── Helper: extract upstream SHA from PR body ──
+          extract_sha() {
+            echo "$1" | grep -oP 'prebid/prebid-server/commit/\K[0-9a-f]+' | head -1
+          }
+
+          # ── Collect PRs by resolution strategy ──
+          # 1) merge-conflict (without leave-merge-conflicts) → retry with -X theirs
+          # 2) leave-merge-conflicts → re-cherry-pick without -X theirs, leave markers
+
+          mapfile -t THEIRS_PRS < <(gh pr list \
+            --repo "$FORK_REPO" \
+            --label "merge-conflict" \
+            --label "upstream-sync" \
+            --state open \
+            --json number --jq '.[].number')
+
+          mapfile -t LEAVE_CONFLICT_PRS < <(gh pr list \
+            --repo "$FORK_REPO" \
+            --label "leave-merge-conflicts" \
+            --label "upstream-sync" \
+            --state open \
+            --json number --jq '.[].number')
+
+          # If a PR has both labels, leave-merge-conflicts takes priority —
+          # remove it from the -X theirs list
+          FILTERED_THEIRS=()
+          for PR in "${THEIRS_PRS[@]}"; do
+            [ -z "$PR" ] && continue
+            SKIP=false
+            for LEAVE_PR in "${LEAVE_CONFLICT_PRS[@]}"; do
+              [ -z "$LEAVE_PR" ] && continue
+              if [ "$PR" = "$LEAVE_PR" ]; then
+                SKIP=true
+                break
+              fi
+            done
+            if [ "$SKIP" = false ]; then
+              FILTERED_THEIRS+=("$PR")
+            fi
+          done
+
+          TOTAL=$(( ${#FILTERED_THEIRS[@]} + ${#LEAVE_CONFLICT_PRS[@]} ))
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "✅ No conflict PRs to reprocess."
+            exit 0
+          fi
+
+          echo "Found ${#FILTERED_THEIRS[@]} merge-conflict PRs (will use -X theirs)"
+          echo "Found ${#LEAVE_CONFLICT_PRS[@]} leave-merge-conflicts PRs (will leave markers)"
+
+          REPROCESSED=0
+          STRUCTURAL=0
+          MARKERS_LEFT=0
+          ERRORS=0
+
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # Strategy 1: merge-conflict PRs → retry with -X theirs
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          for PR_NUMBER in "${FILTERED_THEIRS[@]}"; do
+            [ -z "$PR_NUMBER" ] && continue
+
+            PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$FORK_REPO" --json headRefName,title,body)
+            BRANCH=$(echo "$PR_JSON" | jq -r '.headRefName')
+            TITLE=$(echo "$PR_JSON" | jq -r '.title')
+            BODY=$(echo "$PR_JSON" | jq -r '.body')
+
+            echo ""
+            echo "━━━ PR #${PR_NUMBER} (-X theirs): ${TITLE} ━━━"
+
+            SHA=$(extract_sha "$BODY")
+            if [ -z "$SHA" ]; then
+              echo "  ❌ Could not extract upstream SHA from PR body — skipping"
+              ERRORS=$((ERRORS + 1))
+              continue
+            fi
+            echo "  Upstream SHA: ${SHA:0:8}"
+
+            if ! git cat-file -e "$SHA" 2>/dev/null; then
+              echo "  ❌ Upstream SHA $SHA not found — skipping"
+              ERRORS=$((ERRORS + 1))
+              continue
+            fi
+
+            git checkout main
+            git branch -D "$BRANCH" 2>/dev/null || true
+            git checkout -b "$BRANCH"
+
+            THEIRS_RESULT=0
+            git cherry-pick "$SHA" --no-edit -X theirs 2>/dev/null || THEIRS_RESULT=$?
+
+            if [ "$THEIRS_RESULT" -ne 0 ]; then
+              echo "  ⚠ Structural conflict — -X theirs could not resolve"
+              git cherry-pick --abort 2>/dev/null || true
+
+              gh pr edit "$PR_NUMBER" --repo "$FORK_REPO" \
+                --add-label "structural-conflict" || true
+              gh pr comment "$PR_NUMBER" --repo "$FORK_REPO" \
+                --body $'🔧 **Auto-reprocess failed**: This cherry-pick has structural conflicts that `-X theirs` could not resolve (e.g., files renamed or moved downstream). Manual resolution is needed.' || true
+
+              STRUCTURAL=$((STRUCTURAL + 1))
+            else
+              git push origin "$BRANCH" --force
+              echo "  ✅ Re-cherry-picked with -X theirs, force-pushed"
+
+              gh pr edit "$PR_NUMBER" --repo "$FORK_REPO" \
+                --remove-label "merge-conflict" \
+                --add-label "auto-resolved-theirs" || true
+              gh pr ready "$PR_NUMBER" --repo "$FORK_REPO" || true
+
+              printf -v NEW_BODY '%s\n\n> ⚠️ **Auto-resolved**: This cherry-pick had conflicts that were resolved by accepting the upstream version (`-X theirs`). Review carefully for downstream-specific changes that may have been overwritten.' "$BODY"
+              gh pr edit "$PR_NUMBER" --repo "$FORK_REPO" --body "$NEW_BODY" || true
+
+              REPROCESSED=$((REPROCESSED + 1))
+            fi
+
+            git checkout main
+          done
+
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # Strategy 2: leave-merge-conflicts PRs → leave conflict markers
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          for PR_NUMBER in "${LEAVE_CONFLICT_PRS[@]}"; do
+            [ -z "$PR_NUMBER" ] && continue
+
+            PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$FORK_REPO" --json headRefName,title,body)
+            BRANCH=$(echo "$PR_JSON" | jq -r '.headRefName')
+            TITLE=$(echo "$PR_JSON" | jq -r '.title')
+            BODY=$(echo "$PR_JSON" | jq -r '.body')
+
+            echo ""
+            echo "━━━ PR #${PR_NUMBER} (leave markers): ${TITLE} ━━━"
+
+            SHA=$(extract_sha "$BODY")
+            if [ -z "$SHA" ]; then
+              echo "  ❌ Could not extract upstream SHA from PR body — skipping"
+              ERRORS=$((ERRORS + 1))
+              continue
+            fi
+            echo "  Upstream SHA: ${SHA:0:8}"
+
+            if ! git cat-file -e "$SHA" 2>/dev/null; then
+              echo "  ❌ Upstream SHA $SHA not found — skipping"
+              ERRORS=$((ERRORS + 1))
+              continue
+            fi
+
+            # Reset branch from main, cherry-pick WITHOUT -X theirs
+            git checkout main
+            git branch -D "$BRANCH" 2>/dev/null || true
+            git checkout -b "$BRANCH"
+
+            CHERRY_RESULT=0
+            git cherry-pick "$SHA" --no-edit 2>/dev/null || CHERRY_RESULT=$?
+
+            if [ "$CHERRY_RESULT" -ne 0 ]; then
+              echo "  📝 Cherry-pick has conflicts — committing with conflict markers"
+
+              # Stage all files including those with conflict markers
+              git add -A
+              git commit --no-edit \
+                -m "Upstream: ${TITLE} (CONFLICT MARKERS — manual resolution needed)" || true
+
+              git push origin "$BRANCH" --force
+              echo "  ✅ Pushed branch with conflict markers"
+
+              # Update labels
+              gh pr edit "$PR_NUMBER" --repo "$FORK_REPO" \
+                --remove-label "merge-conflict" \
+                --remove-label "auto-resolved-theirs" || true
+
+              # Un-draft so reviewers can resolve the conflicts
+              gh pr ready "$PR_NUMBER" --repo "$FORK_REPO" || true
+
+              # Update PR body: strip old auto-resolved note, add conflict-markers note
+              CLEANED_BODY=$(echo "$BODY" | sed '/^> ⚠️ \*\*Auto-resolved\*\*/d')
+              MARKER_NOTE=$'\n\n> 🔀 **Conflict markers left in place**: This cherry-pick has conflicts that were intentionally left as conflict markers (`<<<<<<< ... >>>>>>> ...`) for manual resolution. Search for `<<<<<<<` to find all conflicts.'
+              printf -v NEW_BODY '%s%s' "$CLEANED_BODY" "$MARKER_NOTE"
+              gh pr edit "$PR_NUMBER" --repo "$FORK_REPO" --body "$NEW_BODY" || true
+
+              MARKERS_LEFT=$((MARKERS_LEFT + 1))
+            else
+              # No conflicts this time — clean cherry-pick
+              echo "  ✅ Cherry-pick applied cleanly (no conflicts)"
+              git push origin "$BRANCH" --force
+
+              gh pr edit "$PR_NUMBER" --repo "$FORK_REPO" \
+                --remove-label "leave-merge-conflicts" \
+                --remove-label "merge-conflict" \
+                --remove-label "auto-resolved-theirs" || true
+              gh pr ready "$PR_NUMBER" --repo "$FORK_REPO" || true
+
+              REPROCESSED=$((REPROCESSED + 1))
+            fi
+
+            git checkout main
+          done
+
+          echo ""
+          echo "━━━ Summary ━━━"
+          echo "  Resolved (clean):   $REPROCESSED"
+          echo "  Markers left:       $MARKERS_LEFT"
+          echo "  Structural:         $STRUCTURAL"
+          echo "  Errors:             $ERRORS"
