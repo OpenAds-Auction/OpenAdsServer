@@ -234,6 +234,7 @@ func (me *MetricsEngineMock) RecordModuleTimeout(labels ModuleLabels) {
 func (me *MetricsEngineMock) RecordAdapterThrottled(adapterName openrtb_ext.BidderName) {
 	me.Called(adapterName)
 }
+<<<<<<< HEAD
 
 func (me *MetricsEngineMock) RecordConnectionWant() {
 	me.Called()
@@ -258,3 +259,5 @@ func (me *MetricsEngineMock) RecordAuctionAuditError(reason AuctionAuditErrorRea
 func (me *MetricsEngineMock) RecordAuctionAuditActiveFilters(count int) {
 	me.Called(count)
 }
+=======
+>>>>>>> 17a06b6a (Revert "Metrics: Record HTTP connections wanted and obtained (#4518)" (#4538))
