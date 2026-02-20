@@ -552,6 +552,7 @@ type S3Analytics struct {
 	Buffers       S3AnalyticsBuffer `mapstructure:"buffers"`
 	FallbackDir   string            `mapstructure:"fallback_dir"`
 	UploadTimeout string            `mapstructure:"upload_timeout"`
+	UsePathStyle  bool              `mapstructure:"use_path_style"`
 }
 
 type S3AnalyticsBuffer struct {
@@ -635,6 +636,9 @@ type DisabledMetrics struct {
 	// server establishes with bidder servers such as the number of connections
 	// that were created or reused.
 	AdapterConnectionMetrics bool `mapstructure:"adapter_connections_metrics"`
+
+	// True if we don't want to collect metrics on dial time and dial errors
+	AdapterConnectionDialMetrics bool `mapstructure:"adapter_connections_dial_metrics"`
 
 	// True if we don't want to collect the per adapter buyer UID scrubbed metric
 	AdapterBuyerUIDScrubbed bool `mapstructure:"adapter_buyeruid_scrubbed"`
@@ -1056,6 +1060,7 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("metrics.disabled_metrics.account_debug", true)
 	v.SetDefault("metrics.disabled_metrics.account_stored_responses", true)
 	v.SetDefault("metrics.disabled_metrics.adapter_connections_metrics", true)
+	v.SetDefault("metrics.disabled_metrics.adapter_connections_dial_metrics", true)
 	v.SetDefault("metrics.disabled_metrics.adapter_buyeruid_scrubbed", true)
 	v.SetDefault("metrics.disabled_metrics.adapter_gdpr_request_blocked", false)
 	v.SetDefault("metrics.influxdb.host", "")
@@ -1225,6 +1230,7 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("analytics.s3.buffers.size", "10MB")
 	v.SetDefault("analytics.s3.buffers.timeout", "15m")
 	v.SetDefault("analytics.s3.upload_timeout", "2s")
+	v.SetDefault("analytics.s3.use_path_style", false)
 	v.SetDefault("analytics.auction_audit.enabled", false)
 	v.SetDefault("analytics.auction_audit.environment", "prod")
 	v.SetDefault("analytics.auction_audit.max_filters", 1000)
