@@ -706,15 +706,6 @@ func (me *Metrics) RecordConnectionClose(success bool) {
 	}
 }
 
-<<<<<<< HEAD
-func (me *Metrics) RecordConnectionWant() {
-	me.ConnectionWantCounter.Inc(1)
-}
-
-func (me *Metrics) RecordConnectionGot() {
-	me.ConnectionGotCounter.Inc(1)
-}
-
 func (me *Metrics) RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus) {
 	if destination == AnalyticsDestinationS3 {
 		switch status {
@@ -747,8 +738,6 @@ func (me *Metrics) RecordAuctionAuditActiveFilters(count int) {
 	// go-metrics doesn't support this metric - no-op
 }
 
-=======
->>>>>>> 17a06b6a (Revert "Metrics: Record HTTP connections wanted and obtained (#4518)" (#4538))
 // RecordRequestTime implements a part of the MetricsEngine interface. The calling code is responsible
 // for determining the call duration.
 func (me *Metrics) RecordRequestTime(labels Labels, length time.Duration) {

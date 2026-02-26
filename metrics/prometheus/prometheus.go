@@ -1166,15 +1166,6 @@ func (m *Metrics) RecordAdapterThrottled(adapterName openrtb_ext.BidderName) {
 		adapterLabel: strings.ToLower(string(adapterName)),
 	}).Inc()
 }
-<<<<<<< HEAD
-
-func (m *Metrics) RecordConnectionWant() {
-	m.connectionWant.Inc()
-}
-
-func (m *Metrics) RecordConnectionGot() {
-	m.connectionGot.Inc()
-}
 
 func (m *Metrics) RecordS3Analytics(destination metrics.AnalyticsDestination, status metrics.S3UploadStatus) {
 	m.analyticsS3Upload.With(prometheus.Labels{
@@ -1199,5 +1190,3 @@ func (m *Metrics) RecordAuctionAuditError(reason metrics.AuctionAuditErrorReason
 func (m *Metrics) RecordAuctionAuditActiveFilters(count int) {
 	m.auctionAuditActiveFilters.Set(float64(count))
 }
-=======
->>>>>>> 17a06b6a (Revert "Metrics: Record HTTP connections wanted and obtained (#4518)" (#4538))
