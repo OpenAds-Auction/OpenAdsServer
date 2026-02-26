@@ -72,16 +72,6 @@ func TestConnectionMetrics(t *testing.T) {
 	adapterName := openrtb_ext.BidderName("anyName")
 	lowerCasedAdapterName := "anyname"
 	testCases := []struct {
-<<<<<<< HEAD
-		description              string
-		testCase                 func(m *Metrics)
-		expectedOpenedCount      float64
-		expectedOpenedErrorCount float64
-		expectedClosedCount      float64
-		expectedClosedErrorCount float64
-		expectedConnectionWant   float64
-		expectedConnectionGot    float64
-=======
 		description                  string
 		testCase                     func(m *Metrics)
 		expectedOpenedCount          float64
@@ -91,7 +81,6 @@ func TestConnectionMetrics(t *testing.T) {
 		expectedConnectionDialErrors float64
 		expectedDialTime             float64
 		expectedDialTimerCalls       uint64
->>>>>>> 6a9b4b29 (Metrics: Add connection dial metrics by adapter (#4528))
 	}{
 		{
 			description: "Open Success",
@@ -133,21 +122,6 @@ func TestConnectionMetrics(t *testing.T) {
 			expectedClosedCount:      0,
 			expectedClosedErrorCount: 1,
 		},
-		{
-<<<<<<< HEAD
-			description: "connection-want",
-			testCase: func(m *Metrics) {
-				m.RecordConnectionWant()
-			},
-			expectedConnectionWant: 1,
-		},
-		{
-			description: "connection-got",
-			testCase: func(m *Metrics) {
-				m.RecordConnectionGot()
-			},
-			expectedConnectionGot: 1,
-=======
 			description: "connection-dial-ended-and-threw-an-error",
 			testCase: func(m *Metrics) {
 				m.RecordAdapterConnectionDialError(adapterName)
@@ -161,7 +135,6 @@ func TestConnectionMetrics(t *testing.T) {
 			},
 			expectedDialTime:       1,
 			expectedDialTimerCalls: 1,
->>>>>>> 6a9b4b29 (Metrics: Add connection dial metrics by adapter (#4528))
 		},
 	}
 
@@ -182,12 +155,6 @@ func TestConnectionMetrics(t *testing.T) {
 			test.expectedClosedErrorCount, prometheus.Labels{
 				connectionErrorLabel: connectionCloseError,
 			})
-<<<<<<< HEAD
-		assertCounterValue(t, test.description, "connectionWant", m.connectionWant,
-			test.expectedConnectionWant)
-		assertCounterValue(t, test.description, "connectionGot", m.connectionGot,
-			test.expectedConnectionGot)
-=======
 		assertCounterVecValue(t,
 			test.description,
 			"adapter[anyName]",
@@ -202,7 +169,6 @@ func TestConnectionMetrics(t *testing.T) {
 		assert.Equal(t, test.expectedDialTimerCalls > 0, found)
 		assert.Equal(t, test.expectedDialTimerCalls, histogram.GetSampleCount(), test.description)
 		assert.Equal(t, test.expectedDialTime, histogram.GetSampleSum(), test.description)
->>>>>>> 6a9b4b29 (Metrics: Add connection dial metrics by adapter (#4528))
 	}
 }
 
