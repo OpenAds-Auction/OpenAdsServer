@@ -585,8 +585,6 @@ type MetricsEngine interface {
 	RecordModuleExecutionError(labels ModuleLabels)
 	RecordModuleTimeout(labels ModuleLabels)
 	RecordAdapterThrottled(adapterName openrtb_ext.BidderName)
-	RecordConnectionWant()
-	RecordConnectionGot()
 	RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus)
 	RecordAuctionAudit(action AuctionAuditAction, account string)
 	RecordAuctionAuditError(reason AuctionAuditErrorReason)

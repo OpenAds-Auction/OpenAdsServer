@@ -235,14 +235,6 @@ func (me *MetricsEngineMock) RecordAdapterThrottled(adapterName openrtb_ext.Bidd
 	me.Called(adapterName)
 }
 
-func (me *MetricsEngineMock) RecordConnectionWant() {
-	me.Called()
-}
-
-func (me *MetricsEngineMock) RecordConnectionGot() {
-	me.Called()
-}
-
 func (me *MetricsEngineMock) RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus) {
 	me.Called(destination, status)
 }
