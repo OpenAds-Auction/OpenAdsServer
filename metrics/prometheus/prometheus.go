@@ -79,6 +79,8 @@ type Metrics struct {
 	adapterBidResponseSecureMarkupError   *prometheus.CounterVec
 	adapterBidResponseSecureMarkupWarn    *prometheus.CounterVec
 	adapterThrottled                      *prometheus.CounterVec
+	adapterConnectionDialErrors           *prometheus.CounterVec
+	adapterConnectionDialTime             *prometheus.HistogramVec
 
 	// Syncer Metrics
 	syncerRequests *prometheus.CounterVec
@@ -429,6 +431,19 @@ func NewMetrics(cfg config.PrometheusMetrics, disabledMetrics config.DisabledMet
 			"Seconds from when the connection was requested until it is either created or reused",
 			[]string{adapterLabel},
 			standardTimeBuckets)
+
+		if !metrics.metricsDisabled.AdapterConnectionDialMetrics {
+			metrics.adapterConnectionDialErrors = newCounter(cfg, reg,
+				"adapter_connection_dial_errors",
+				"Count when a connection dial returns an error.",
+				[]string{adapterLabel})
+
+			metrics.adapterConnectionDialTime = newHistogramVec(cfg, reg,
+				"adapter_connection_dial_time",
+				"Seconds adapter bidder connection dial lasted",
+				[]string{adapterLabel},
+				append(prometheus.DefBuckets, 15, 30))
+		}
 	}
 
 	metrics.adapterBidResponseValidationSizeError = newCounter(cfg, reg,
@@ -1189,4 +1204,16 @@ func (m *Metrics) RecordAuctionAuditError(reason metrics.AuctionAuditErrorReason
 
 func (m *Metrics) RecordAuctionAuditActiveFilters(count int) {
 	m.auctionAuditActiveFilters.Set(float64(count))
+}
+
+func (m *Metrics) RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName) {
+	m.adapterConnectionDialErrors.With(prometheus.Labels{
+		adapterLabel: strings.ToLower(string(adapterName)),
+	}).Inc()
+}
+
+func (m *Metrics) RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration) {
+	m.adapterConnectionDialTime.With(prometheus.Labels{
+		adapterLabel: strings.ToLower(string(adapterName)),
+	}).Observe(dialStartTime.Seconds())
 }

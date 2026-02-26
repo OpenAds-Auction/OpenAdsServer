@@ -250,3 +250,11 @@ func (me *MetricsEngineMock) RecordAuctionAuditError(reason AuctionAuditErrorRea
 func (me *MetricsEngineMock) RecordAuctionAuditActiveFilters(count int) {
 	me.Called(count)
 }
+
+func (me *MetricsEngineMock) RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName) {
+	me.Called()
+}
+
+func (me *MetricsEngineMock) RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration) {
+	me.Called(adapterName, dialStartTime)
+}

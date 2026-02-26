@@ -589,4 +589,6 @@ type MetricsEngine interface {
 	RecordAuctionAudit(action AuctionAuditAction, account string)
 	RecordAuctionAuditError(reason AuctionAuditErrorReason)
 	RecordAuctionAuditActiveFilters(count int)
+	RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName)
+	RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration)
 }
