@@ -405,6 +405,8 @@ func (me *MultiMetricsEngine) RecordAuctionAuditError(reason metrics.AuctionAudi
 func (me *MultiMetricsEngine) RecordAuctionAuditActiveFilters(count int) {
 	for _, thisME := range *me {
 		thisME.RecordAuctionAuditActiveFilters(count)
+	}
+}
 
 func (me *MultiMetricsEngine) RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName) {
 	for _, thisME := range *me {
@@ -612,7 +614,7 @@ func (me *NilMetricsEngine) RecordAuctionAuditError(reason metrics.AuctionAuditE
 
 func (me *NilMetricsEngine) RecordAuctionAuditActiveFilters(count int) {
 }
-    
+
 func (me *NilMetricsEngine) RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName) {
 }
 

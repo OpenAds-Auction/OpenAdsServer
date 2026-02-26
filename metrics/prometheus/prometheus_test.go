@@ -122,6 +122,7 @@ func TestConnectionMetrics(t *testing.T) {
 			expectedClosedCount:      0,
 			expectedClosedErrorCount: 1,
 		},
+		{
 			description: "connection-dial-ended-and-threw-an-error",
 			testCase: func(m *Metrics) {
 				m.RecordAdapterConnectionDialError(adapterName)
