@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/metrics"
 	"github.com/prebid/prebid-server/v3/util/uuidutil"
 	"google.golang.org/protobuf/proto"
@@ -92,11 +92,11 @@ func (fc *FilterConsumer) consumeLoop() {
 
 			// This may be overkill and we may want to just loop indefinitely. We'll see how common it is.
 			consecutiveFailures++
-			glog.Errorf("[auctionaudit] Filter consumer error (%d/%d): %v", consecutiveFailures, maxConsumeRetries, err)
+			logger.Errorf("[auctionaudit] Filter consumer error (%d/%d): %v", consecutiveFailures, maxConsumeRetries, err)
 			fc.metricsEngine.RecordAuctionAuditError(metrics.AuctionAuditErrorConnection)
 
 			if consecutiveFailures >= maxConsumeRetries {
-				glog.Errorf("[auctionaudit] Filter consumer giving up after %d consecutive failures", maxConsumeRetries)
+				logger.Errorf("[auctionaudit] Filter consumer giving up after %d consecutive failures", maxConsumeRetries)
 				return
 			}
 
@@ -113,12 +113,12 @@ func (fc *FilterConsumer) consumeLoop() {
 }
 
 func (h *filterConsumerHandler) Setup(sarama.ConsumerGroupSession) error {
-	glog.Info("[auctionaudit] Filter consumer session started")
+	logger.Infof("[auctionaudit] Filter consumer session started")
 	return nil
 }
 
 func (h *filterConsumerHandler) Cleanup(sarama.ConsumerGroupSession) error {
-	glog.Info("[auctionaudit] Filter consumer session ended")
+	logger.Infof("[auctionaudit] Filter consumer session ended")
 	return nil
 }
 
@@ -140,7 +140,7 @@ func (h *filterConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession
 func (h *filterConsumerHandler) processMessage(msg *sarama.ConsumerMessage) {
 	filter := &AuctionFilterRequest{}
 	if err := proto.Unmarshal(msg.Value, filter); err != nil {
-		glog.Errorf("[auctionaudit] Failed to unmarshal filter message: %v", err)
+		logger.Errorf("[auctionaudit] Failed to unmarshal filter message: %v", err)
 		h.metricsEngine.RecordAuctionAuditError(metrics.AuctionAuditErrorConsume)
 		return
 	}
@@ -155,13 +155,13 @@ func (h *filterConsumerHandler) processMessage(msg *sarama.ConsumerMessage) {
 	switch action {
 	case FilterActionRemove:
 		h.registry.Unregister(filter.SessionId, filter.AccountId)
-		glog.Infof("[auctionaudit] Unregistered filter: session=%d account=%s", filter.SessionId, filter.AccountId)
+		logger.Infof("[auctionaudit] Unregistered filter: session=%d account=%s", filter.SessionId, filter.AccountId)
 	default:
 		// Default to create
 		if err := h.registry.Register(filter); err != nil {
-			glog.Warningf("[auctionaudit] Failed to register filter: session=%d account=%s: %v", filter.SessionId, filter.AccountId, err)
+			logger.Warnf("[auctionaudit] Failed to register filter: session=%d account=%s: %v", filter.SessionId, filter.AccountId, err)
 		} else {
-			glog.Infof("[auctionaudit] Registered filter: session=%d account=%s", filter.SessionId, filter.AccountId)
+			logger.Infof("[auctionaudit] Registered filter: session=%d account=%s", filter.SessionId, filter.AccountId)
 		}
 	}
 }

@@ -102,6 +102,14 @@ To maintain consistency in the project's code, please:
 
 - Do not discard errors. You should implement appropriate error handling, such as gracefully falling back to a default behavior or bubbling up an error.
 
+## Swapping Global Dependencies
+
+Logger is a global side-effectful dependency that sometimes needs to be swapped to modify the behavior.  
+The `Logger` package contains an interface definition for unstructured logging with built-in `glog` implementation.
+The interface provides standard logging methods: `Debug`, `Info`, `Warn`, `Error`, and `Fatal`.
+The `glog` implementation is based on `github.com/golang/glog` package and serves as the concrete implementation for the logging interface.
+By default, the package uses the `glog` logger implementation.
+
 ## Contributing
 
 We welcome contributions to OpenAds Server in form of issues and PRs in this repository. If your change applies to both Prebid Server as well as OpenAds Server, please submit it to the [Prebid Server Go repository](https://github.com/prebid/prebid-server) as we will pull in relevant upstream changes. 

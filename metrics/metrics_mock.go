@@ -235,14 +235,6 @@ func (me *MetricsEngineMock) RecordAdapterThrottled(adapterName openrtb_ext.Bidd
 	me.Called(adapterName)
 }
 
-func (me *MetricsEngineMock) RecordConnectionWant() {
-	me.Called()
-}
-
-func (me *MetricsEngineMock) RecordConnectionGot() {
-	me.Called()
-}
-
 func (me *MetricsEngineMock) RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus) {
 	me.Called(destination, status)
 }
@@ -257,4 +249,12 @@ func (me *MetricsEngineMock) RecordAuctionAuditError(reason AuctionAuditErrorRea
 
 func (me *MetricsEngineMock) RecordAuctionAuditActiveFilters(count int) {
 	me.Called(count)
+}
+
+func (me *MetricsEngineMock) RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName) {
+	me.Called()
+}
+
+func (me *MetricsEngineMock) RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration) {
+	me.Called(adapterName, dialStartTime)
 }

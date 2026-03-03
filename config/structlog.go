@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/glog"
+	logInternal "github.com/prebid/prebid-server/v3/logger"
 )
 
 type logMsg func(string, ...interface{})
@@ -20,7 +20,7 @@ var blocklistregexp = []*regexp.Regexp{
 // prefix if you want that name to be logged. Structs will append .<fieldname> recursively to the prefix
 // to document deeper structure.
 func logGeneral(v reflect.Value, prefix string) {
-	logGeneralWithLogger(v, prefix, glog.Infof)
+	logGeneralWithLogger(v, prefix, logInternal.Infof)
 }
 
 func logGeneralWithLogger(v reflect.Value, prefix string, logger logMsg) {

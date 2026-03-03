@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/prebid/openrtb/v20/openrtb2"
+	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/metrics"
 )
 
@@ -151,7 +151,7 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) error {
 
 	// reject if at capacity
 	if !exists && r.count >= r.maxFilters {
-		glog.Warningf("[auctionaudit] Filter rejected: max filters (%d) reached", r.maxFilters)
+		logger.Warnf("[auctionaudit] Filter rejected: max filters (%d) reached", r.maxFilters)
 		return ErrRegistryAtCapacity
 	}
 
@@ -252,7 +252,7 @@ func (r *FilterRegistry) cleanupExpired() {
 				delete(accountFilters, sessionId)
 				expiredCount++
 				r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterExpired, filter.AccountId)
-				glog.Infof("[auctionaudit] Filter expired: account=%s session=%d", filter.AccountId, filter.SessionId)
+				logger.Infof("[auctionaudit] Filter expired: account=%s session=%d", filter.AccountId, filter.SessionId)
 			}
 		}
 
