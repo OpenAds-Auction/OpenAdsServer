@@ -2,7 +2,6 @@ package build
 
 import (
 	"encoding/json"
-
 	"github.com/benbjohnson/clock"
 	"github.com/prebid/prebid-server/v3/analytics"
 	"github.com/prebid/prebid-server/v3/analytics/agma"
@@ -13,6 +12,7 @@ import (
 	"github.com/prebid/prebid-server/v3/analytics/s3"
 	"github.com/prebid/prebid-server/v3/config"
 	"github.com/prebid/prebid-server/v3/logger"
+	"github.com/prebid/prebid-server/v3/metrics"
 	"github.com/prebid/prebid-server/v3/openrtb_ext"
 	"github.com/prebid/prebid-server/v3/ortb"
 	"github.com/prebid/prebid-server/v3/privacy"
@@ -61,13 +61,13 @@ func New(analytics *config.Analytics, metricsEngine metrics.MetricsEngine) analy
 	if analytics.S3.Enabled {
 		s3Client, err := s3.NewS3Client(analytics.S3)
 		if err != nil {
-			glog.Errorf("Could not create S3 client: %v", err)
+			logger.Errorf("Could not create S3 client: %v", err)
 		} else {
 			s3Module, err := s3.NewModule(analytics.S3, s3Client, clock.New(), metricsEngine)
 			if err == nil {
 				modules["s3"] = s3Module
 			} else {
-				glog.Errorf("Could not initialize S3 Analytics: %v", err)
+				logger.Errorf("Could not initialize S3 Analytics: %v", err)
 			}
 		}
 	}
@@ -78,7 +78,7 @@ func New(analytics *config.Analytics, metricsEngine metrics.MetricsEngine) analy
 			modules["auctionaudit"] = auditModule
 		} else {
 			metricsEngine.RecordAuctionAuditError(metrics.AuctionAuditErrorStartup)
-			glog.Errorf("Could not initialize Auction Audit Analytics: %v", err)
+			logger.Errorf("Could not initialize Auction Audit Analytics: %v", err)
 		}
 	}
 
