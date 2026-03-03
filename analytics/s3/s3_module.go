@@ -13,9 +13,9 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/docker/go-units"
-	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/v3/analytics"
 	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/metrics"
 	"github.com/prebid/prebid-server/v3/util/uuidutil"
 )
@@ -54,7 +54,7 @@ func newS3Logger(cfg config.S3Analytics, sender logSender, clock clock.Clock, ev
 		return nil, fmt.Errorf("invalid flush interval: %w", err)
 	}
 
-	logger := &S3Logger{
+	s3Log := &S3Logger{
 		sender:            sender,
 		eventType:         eventType,
 		clock:             clock,
@@ -67,11 +67,11 @@ func newS3Logger(cfg config.S3Analytics, sender logSender, clock clock.Clock, ev
 		sigTermCh:         make(chan os.Signal, 1),
 	}
 
-	logger.gzw = gzip.NewWriter(&logger.buffer)
+	s3Log.gzw = gzip.NewWriter(&s3Log.buffer)
 
-	signal.Notify(logger.sigTermCh, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(s3Log.sigTermCh, os.Interrupt, syscall.SIGTERM)
 
-	return logger, nil
+	return s3Log, nil
 }
 
 func NewModule(cfg config.S3Analytics, client S3Client, clock clock.Clock, metricsEngine metrics.MetricsEngine) (analytics.Module, error) {
@@ -95,7 +95,7 @@ func NewModule(cfg config.S3Analytics, client S3Client, clock clock.Clock, metri
 		go logger.start()
 	}
 
-	glog.Infof("[s3] S3 analytics module initialized: bucket=%s prefix=%s env=%s region=%s",
+	logger.Infof("[s3] S3 analytics module initialized: bucket=%s prefix=%s env=%s region=%s",
 		cfg.Bucket, cfg.Prefix, cfg.Environment, cfg.Region)
 
 	return &S3Module{
@@ -112,7 +112,7 @@ func (l *S3Logger) start() {
 	for {
 		select {
 		case <-l.sigTermCh:
-			glog.Infof("[s3] %s logger received shutdown signal, flushing buffer", l.eventType)
+			logger.Infof("[s3] %s logger received shutdown signal, flushing buffer", l.eventType)
 			l.flush()
 			return
 		case event := <-l.bufferCh:
@@ -132,12 +132,12 @@ func (l *S3Logger) bufferEvent(data []byte) {
 
 	// Write event + newline for NDJSON format
 	if _, err := l.gzw.Write(data); err != nil {
-		glog.Errorf("[s3] Failed to write event to %s buffer: %v", l.eventType, err)
+		logger.Errorf("[s3] Failed to write event to %s buffer: %v", l.eventType, err)
 		return
 	}
 
 	if _, err := l.gzw.Write([]byte("\n")); err != nil {
-		glog.Errorf("[s3] Failed to write newline to %s buffer: %v", l.eventType, err)
+		logger.Errorf("[s3] Failed to write newline to %s buffer: %v", l.eventType, err)
 		return
 	}
 
@@ -160,7 +160,7 @@ func (l *S3Logger) flush() {
 
 	// Close gzip writer to finalize compression
 	if err := l.gzw.Close(); err != nil {
-		glog.Errorf("[s3] Failed to close gzip writer for %s: %v", l.eventType, err)
+		logger.Errorf("[s3] Failed to close gzip writer for %s: %v", l.eventType, err)
 		l.reset()
 		return
 	}
@@ -168,7 +168,7 @@ func (l *S3Logger) flush() {
 	// Copy buffer for async upload
 	payload := make([]byte, l.buffer.Len())
 	if _, err := l.buffer.Read(payload); err != nil {
-		glog.Errorf("[s3] Failed to read buffer for %s: %v", l.eventType, err)
+		logger.Errorf("[s3] Failed to read buffer for %s: %v", l.eventType, err)
 		l.reset()
 		return
 	}
@@ -181,9 +181,9 @@ func (l *S3Logger) flush() {
 	// Upload asynchronously
 	go func() {
 		if err := l.sender(payload, key); err != nil {
-			glog.Errorf("[s3] Upload failed for %s: %s: %v", l.eventType, key, err)
+			logger.Errorf("[s3] Upload failed for %s: %s: %v", l.eventType, key, err)
 		} else {
-			glog.Infof("[s3] Successfully uploaded %s batch: %s (%d bytes)",
+			logger.Infof("[s3] Successfully uploaded %s batch: %s (%d bytes)",
 				l.eventType, key, len(payload))
 		}
 	}()
@@ -203,7 +203,7 @@ func (l *S3Logger) generateS3Key() string {
 	uuid, err := uuidGen.Generate()
 	if err != nil {
 		// Fallback to timestamp-only if UUID generation fails (shouldn't happen)
-		glog.Errorf("[s3] Failed to generate UUID for key, using timestamp only: %v", err)
+		logger.Errorf("[s3] Failed to generate UUID for key, using timestamp only: %v", err)
 		uuid = "00000000-0000-0000-0000-000000000000"
 	}
 
@@ -225,7 +225,7 @@ func (m *S3Module) LogAuctionObject(ao *analytics.AuctionObject) {
 
 	payload, err := serializeAuctionObject(ao)
 	if err != nil {
-		glog.Errorf("[s3] Failed to serialize auction object: %v", err)
+		logger.Errorf("[s3] Failed to serialize auction object: %v", err)
 		return
 	}
 
@@ -239,7 +239,7 @@ func (m *S3Module) LogAmpObject(ao *analytics.AmpObject) {
 
 	payload, err := serializeAmpObject(ao)
 	if err != nil {
-		glog.Errorf("[s3] Failed to serialize amp object: %v", err)
+		logger.Errorf("[s3] Failed to serialize amp object: %v", err)
 		return
 	}
 
@@ -253,7 +253,7 @@ func (m *S3Module) LogVideoObject(vo *analytics.VideoObject) {
 
 	payload, err := serializeVideoObject(vo)
 	if err != nil {
-		glog.Errorf("[s3] Failed to serialize video object: %v", err)
+		logger.Errorf("[s3] Failed to serialize video object: %v", err)
 		return
 	}
 
@@ -273,7 +273,7 @@ func (m *S3Module) LogNotificationEventObject(ne *analytics.NotificationEvent) {
 }
 
 func (m *S3Module) Shutdown() {
-	glog.Info("[s3] Shutdown initiated, flushing all buffers")
+	logger.Infof("[s3] Shutdown initiated, flushing all buffers")
 	m.auctionLogger.flush()
 	m.ampLogger.flush()
 	m.videoLogger.flush()

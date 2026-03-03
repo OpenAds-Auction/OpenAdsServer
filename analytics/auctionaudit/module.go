@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/v3/analytics"
 	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/metrics"
 )
 
@@ -66,7 +66,7 @@ func NewModule(cfg config.AuctionAuditAnalytics, metricsEngine metrics.MetricsEn
 
 	filterRegistry.Start(ctx, cleanupInterval)
 
-	glog.Infof("[auctionaudit] Auction audit module initialized: matched_topic=%s filter_topic=%s brokers=%v",
+	logger.Infof("[auctionaudit] Auction audit module initialized: matched_topic=%s filter_topic=%s brokers=%v",
 		cfg.Kafka.MatchedTopic, cfg.Kafka.FilterTopic, cfg.Kafka.Brokers)
 
 	return module, nil
@@ -98,7 +98,7 @@ func (m *AuctionAuditModule) LogAuctionObject(ao *analytics.AuctionObject) {
 	event := buildAuctionEvent(ao, m.environment, accountID, domain, appBundle, mediaTypeSet.ToSlice())
 
 	if err := m.producer.SendMatchedEvent(event, filters); err != nil {
-		glog.Errorf("[auctionaudit] %v", err)
+		logger.Errorf("[auctionaudit] %v", err)
 		m.metricsEngine.RecordAuctionAuditError(metrics.AuctionAuditErrorSend)
 		return
 	}
@@ -109,21 +109,21 @@ func (m *AuctionAuditModule) LogAuctionObject(ao *analytics.AuctionObject) {
 }
 
 func (m *AuctionAuditModule) Shutdown() {
-	glog.Info("[auctionaudit] Shutdown initiated")
+	logger.Infof("[auctionaudit] Shutdown initiated")
 
 	m.cancel()
 
 	if m.filterConsumer != nil {
 		if err := m.filterConsumer.Close(); err != nil {
-			glog.Errorf("[auctionaudit] Failed to close filter consumer: %v", err)
+			logger.Errorf("[auctionaudit] Failed to close filter consumer: %v", err)
 		}
 	}
 
 	if err := m.producer.Close(); err != nil {
-		glog.Errorf("[auctionaudit] Failed to close producer: %v", err)
+		logger.Errorf("[auctionaudit] Failed to close producer: %v", err)
 	}
 
-	glog.Info("[auctionaudit] Shutdown complete")
+	logger.Infof("[auctionaudit] Shutdown complete")
 }
 
 func validateConfig(cfg config.AuctionAuditKafkaConfig) error {

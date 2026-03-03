@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/v3/config"
+	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/metrics"
 )
 
@@ -89,7 +89,7 @@ func (p *Producer) SendMatchedEvent(event *AuctionEvent, filters []*AuctionFilte
 
 func (p *Producer) consumeErrors() {
 	for err := range p.producer.Errors() {
-		glog.Errorf("[auctionaudit] Producer error: %v", err)
+		logger.Errorf("[auctionaudit] Producer error: %v", err)
 		p.metricsEngine.RecordAuctionAuditError(metrics.AuctionAuditErrorProduce)
 	}
 }

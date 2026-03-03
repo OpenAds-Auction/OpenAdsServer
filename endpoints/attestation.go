@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/golang/glog"
+	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/util/jsonutil"
 	"github.com/prebid/prebid-server/v3/version"
 )
@@ -16,7 +16,7 @@ const attestationEndpointValueNotSet = "not-set"
 func NewAttestationEndpoint() http.HandlerFunc {
 	response, err := prepareAttestationEndpointResponse()
 	if err != nil {
-		glog.Fatalf("error creating /attestation endpoint response: %v", err)
+		logger.Fatalf("error creating /attestation endpoint response: %v", err)
 	}
 
 	return func(w http.ResponseWriter, _ *http.Request) {
