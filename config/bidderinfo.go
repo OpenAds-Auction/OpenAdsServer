@@ -803,8 +803,8 @@ func (s *Syncer) Override(original *Syncer) *Syncer {
 		copy.ExternalURL = s.ExternalURL
 	}
 
-	if s.SupportCORS != nil {
-		copy.SupportCORS = s.SupportCORS
+	if s.Enabled != nil {
+		copy.Enabled = s.Enabled
 	}
 
 	return &copy
