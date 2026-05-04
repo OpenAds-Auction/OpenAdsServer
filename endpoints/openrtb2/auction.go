@@ -1778,7 +1778,7 @@ func (deps *endpointDeps) processStoredRequests(requestJson []byte, impInfo []Im
 			}
 
 			// Extract Passthrough from Merged Imp
-			passthrough, _, _, err := jsonparser.Get(resolvedImp, "ext", "prebid", "passthrough")
+			passthrough, _, _, err := getExtPrebidValue(resolvedImp, "passthrough")
 			if err != nil && err != jsonparser.KeyPathNotFoundError {
 				return nil, nil, []error{err}
 			}
@@ -1814,7 +1814,7 @@ func (deps *endpointDeps) processStoredRequests(requestJson []byte, impInfo []Im
 func parseImpInfo(requestJson []byte) (impData []ImpExtPrebidData, errs []error) {
 	if impArray, dataType, _, err := jsonparser.Get(requestJson, "imp"); err == nil && dataType == jsonparser.Array {
 		_, _ = jsonparser.ArrayEach(impArray, func(imp []byte, _ jsonparser.ValueType, _ int, _ error) {
-			impExtData, _, _, _ := jsonparser.Get(imp, "ext", "prebid")
+			impExtData, _, _, _ := getExtPrebidValue(imp)
 			var impExtPrebid openrtb_ext.ExtImpPrebid
 			if impExtData != nil {
 				if err := jsonutil.Unmarshal(impExtData, &impExtPrebid); err != nil {
@@ -1828,6 +1828,20 @@ func parseImpInfo(requestJson []byte) (impData []ImpExtPrebidData, errs []error)
 	return
 }
 
+// getExtPrebidValue reads <subKeys> from the prebid block of the given
+// JSON. Top-level alias resolution: when ext.openads exists it is used
+// in full; otherwise ext.prebid is used. ext.prebid is never consulted
+// when ext.openads exists, even for subkeys missing from openads.
+// Outbound emission is unaffected.
+func getExtPrebidValue(data []byte, subKeys ...string) ([]byte, jsonparser.ValueType, int, error) {
+	rootKey := openrtb_ext.PrebidExtKey
+	if _, dt, _, err := jsonparser.Get(data, "ext", openrtb_ext.OpenAdsExtKey); err == nil && dt != jsonparser.NotExist {
+		rootKey = openrtb_ext.OpenAdsExtKey
+	}
+	path := append([]string{"ext", rootKey}, subKeys...)
+	return jsonparser.Get(data, path...)
+}
+
 type ImpExtPrebidData struct {
 	Imp          json.RawMessage
 	ImpExtPrebid openrtb_ext.ExtImpPrebid
@@ -1838,7 +1852,7 @@ type ImpExtPrebidData struct {
 // (e.g. malformed json, id not a string, etc).
 func getStoredRequestId(data []byte) (string, bool, error) {
 	// These keys must be kept in sync with openrtb_ext.ExtStoredRequest
-	storedRequestId, dataType, _, err := jsonparser.Get(data, "ext", openrtb_ext.PrebidExtKey, "storedrequest", "id")
+	storedRequestId, dataType, _, err := getExtPrebidValue(data, "storedrequest", "id")
 
 	if dataType == jsonparser.NotExist {
 		return "", false, nil

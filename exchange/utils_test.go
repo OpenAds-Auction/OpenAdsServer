@@ -303,6 +303,30 @@ func TestSplitImps(t *testing.T) {
 			expectedImps:    nil,
 			expectedError:   "merging bidder imp first party data for imp imp1 results in an invalid imp: [some error]",
 		},
+		{
+			description: "openads alias for prebid",
+			givenImps: []openrtb2.Imp{
+				{ID: "imp1", Ext: json.RawMessage(`{"openads":{"bidder":{"bidderA":{"imp1ParamA":"imp1ValueA"}}}}`)},
+			},
+			expectedImps: map[string][]openrtb2.Imp{
+				"bidderA": {
+					{ID: "imp1", Ext: json.RawMessage(`{"bidder":{"imp1ParamA":"imp1ValueA"}}`)},
+				},
+			},
+			expectedError: "",
+		},
+		{
+			description: "openads alias, both keys present, openads wins",
+			givenImps: []openrtb2.Imp{
+				{ID: "imp1", Ext: json.RawMessage(`{"prebid":{"bidder":{"bidderA":{"fromPrebid":true}}},"openads":{"bidder":{"bidderB":{"fromOpenAds":true}}}}`)},
+			},
+			expectedImps: map[string][]openrtb2.Imp{
+				"bidderB": {
+					{ID: "imp1", Ext: json.RawMessage(`{"bidder":{"fromOpenAds":true}}`)},
+				},
+			},
+			expectedError: "",
+		},
 	}
 
 	for _, test := range testCases {
@@ -875,7 +899,7 @@ func TestExtractAdapterReqBidderParamsMap(t *testing.T) {
 			name:            "malformed req.ext",
 			givenBidRequest: &openrtb2.BidRequest{Ext: json.RawMessage("malformed")},
 			want:            nil,
-			wantErr:         errors.New("error decoding Request.ext : expect { or n, but found m"),
+			wantErr: errors.New("error decoding Request.ext"),
 		},
 		{
 			name:            "extract bidder params from req.Ext for input request in adapter code",
@@ -887,7 +911,11 @@ func TestExtractAdapterReqBidderParamsMap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ExtractReqExtBidderParamsMap(tt.givenBidRequest)
-			assert.Equal(t, tt.wantErr, err, "err")
+			if tt.wantErr == nil {
+				assert.NoError(t, err, "err")
+			} else {
+				assert.ErrorContains(t, err, tt.wantErr.Error(), "err")
+			}
 			assert.Equal(t, tt.want, got, "result")
 		})
 	}

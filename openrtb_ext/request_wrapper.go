@@ -772,7 +772,16 @@ func (re *RequestExt) unmarshal(extJson json.RawMessage) error {
 		return err
 	}
 
-	prebidJson, hasPrebid := re.ext[prebidKey]
+	// Top-level alias resolution: when ext.openads is present it is used
+	// in full and ext.prebid is ignored entirely. The chosen block is
+	// stored under prebidKey so outbound marshaling emits "prebid".
+	prebidJson, hasPrebid := re.ext[OpenAdsExtKey]
+	if hasPrebid {
+		re.ext[prebidKey] = prebidJson
+	} else {
+		prebidJson, hasPrebid = re.ext[prebidKey]
+	}
+	delete(re.ext, OpenAdsExtKey)
 	if hasPrebid {
 		re.prebid = &ExtRequestPrebid{}
 	}
@@ -1709,7 +1718,16 @@ func (e *ImpExt) unmarshal(extJson json.RawMessage) error {
 		return err
 	}
 
-	prebidJson, hasPrebid := e.ext[prebidKey]
+	// Top-level alias resolution: when imp.ext.openads is present it is
+	// used in full and imp.ext.prebid is ignored entirely. The chosen
+	// block is stored under prebidKey so outbound marshaling emits "prebid".
+	prebidJson, hasPrebid := e.ext[OpenAdsExtKey]
+	if hasPrebid {
+		e.ext[prebidKey] = prebidJson
+	} else {
+		prebidJson, hasPrebid = e.ext[prebidKey]
+	}
+	delete(e.ext, OpenAdsExtKey)
 	if hasPrebid {
 		e.prebid = &ExtImpPrebid{}
 	}

@@ -777,3 +777,65 @@ func TestCloneExtRequestPrebid(t *testing.T) {
 	}
 
 }
+
+func TestExtRequestUnmarshalOpenAdsAlias(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantDebug   bool
+		wantChannel *ExtRequestPrebidChannel
+	}{
+		{
+			name:        "prebid key only",
+			input:       `{"prebid":{"debug":true,"channel":{"name":"pbjs","version":"v10"}}}`,
+			wantDebug:   true,
+			wantChannel: &ExtRequestPrebidChannel{Name: "pbjs", Version: "v10"},
+		},
+		{
+			name:        "openads key only",
+			input:       `{"openads":{"debug":true,"channel":{"name":"pbjs","version":"v10"}}}`,
+			wantDebug:   true,
+			wantChannel: &ExtRequestPrebidChannel{Name: "pbjs", Version: "v10"},
+		},
+		{
+			name:        "both keys, openads wins",
+			input:       `{"prebid":{"debug":true},"openads":{"debug":false}}`,
+			wantDebug:   false,
+			wantChannel: nil,
+		},
+		{
+			name:        "openads with signing-style fields ignored",
+			input:       `{"openads":{"debug":true,"version":"sig-v1","intSigs":["a","b"]}}`,
+			wantDebug:   true,
+			wantChannel: nil,
+		},
+		{
+			name:        "neither key",
+			input:       `{"schain":{"complete":1,"nodes":[],"ver":"1.0"}}`,
+			wantDebug:   false,
+			wantChannel: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var got ExtRequest
+			err := jsonutil.UnmarshalValid([]byte(tc.input), &got)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantDebug, got.Prebid.Debug, "Prebid.Debug")
+			assert.Equal(t, tc.wantChannel, got.Prebid.Channel, "Prebid.Channel")
+		})
+	}
+}
+
+func TestExtRequestMarshalEmitsPrebid(t *testing.T) {
+	in := []byte(`{"openads":{"debug":true}}`)
+	var ext ExtRequest
+	err := jsonutil.UnmarshalValid(in, &ext)
+	assert.NoError(t, err)
+
+	out, err := json.Marshal(&ext)
+	assert.NoError(t, err)
+	assert.Contains(t, string(out), `"prebid"`)
+	assert.NotContains(t, string(out), `"openads"`)
+}

@@ -12,6 +12,10 @@ import (
 // PrebidExtKey represents the prebid extension key used in requests
 const PrebidExtKey = "prebid"
 
+// OpenAdsExtKey is an alias for PrebidExtKey accepted on inbound request.ext
+// and imp.ext. Outbound requests still use PrebidExtKey.
+const OpenAdsExtKey = "openads"
+
 // PrebidExtBidderKey represents the field name within request.imp.ext.prebid reserved for bidder params.
 const PrebidExtBidderKey = "bidder"
 

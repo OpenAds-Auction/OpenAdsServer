@@ -40,6 +40,33 @@ type ExtRequest struct {
 	SChain *openrtb2.SupplyChain `json:"schain,omitempty"`
 }
 
+// UnmarshalJSON resolves the prebid configuration at the top level: if
+// "openads" is present it is used in full, otherwise "prebid" is used.
+// "prebid" is never consulted when "openads" exists, even for fields
+// missing from openads. Unknown fields inside the chosen block are
+// ignored. Outbound marshaling continues to emit "prebid".
+func (e *ExtRequest) UnmarshalJSON(data []byte) error {
+	type alias ExtRequest
+	aux := &struct {
+		Prebid  *json.RawMessage `json:"prebid,omitempty"`
+		OpenAds *json.RawMessage `json:"openads,omitempty"`
+		*alias
+	}{
+		alias: (*alias)(e),
+	}
+	if err := jsonutil.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	src := aux.OpenAds
+	if src == nil {
+		src = aux.Prebid
+	}
+	if src == nil {
+		return nil
+	}
+	return jsonutil.Unmarshal(*src, &e.Prebid)
+}
+
 // ExtRequestPrebid defines the contract for bidrequest.ext.prebid
 type ExtRequestPrebid struct {
 	AdServerTargeting    []AdServerTarget                `json:"adservertargeting,omitempty"`

@@ -1,9 +1,11 @@
 package openrtb_ext
 
 import (
+	"encoding/json"
 	"maps"
 	"slices"
 
+	"github.com/prebid/prebid-server/v3/util/jsonutil"
 	"github.com/prebid/prebid-server/v3/util/ptrutil"
 )
 
@@ -148,6 +150,33 @@ type Price struct {
 
 type ExtImp struct {
 	Prebid *ImpExtPrebid `json:"prebid,omitempty"`
+}
+
+// UnmarshalJSON resolves the prebid sub-object at the top level: if
+// "openads" is present it is used in full, otherwise "prebid" is used.
+// "prebid" is never consulted when "openads" exists, even for fields
+// missing from openads. Outbound marshaling continues to emit "prebid".
+func (e *ExtImp) UnmarshalJSON(data []byte) error {
+	type alias ExtImp
+	aux := &struct {
+		Prebid  *json.RawMessage `json:"prebid,omitempty"`
+		OpenAds *json.RawMessage `json:"openads,omitempty"`
+		*alias
+	}{
+		alias: (*alias)(e),
+	}
+	if err := jsonutil.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	src := aux.OpenAds
+	if src == nil {
+		src = aux.Prebid
+	}
+	if src == nil {
+		return nil
+	}
+	e.Prebid = &ImpExtPrebid{}
+	return jsonutil.Unmarshal(*src, e.Prebid)
 }
 
 type ImpExtPrebid struct {

@@ -1,9 +1,11 @@
 package openrtb_ext
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
+	"github.com/prebid/prebid-server/v3/util/jsonutil"
 	"github.com/prebid/prebid-server/v3/util/ptrutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -479,4 +481,61 @@ func TestFloorRuleDeepCopyNil(t *testing.T) {
 	if got != nil {
 		t.Errorf("PriceFloorRules.DeepCopy() = %v, want %v", got, nil)
 	}
+}
+
+func TestExtImpUnmarshalOpenAdsAlias(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantNil   bool
+		wantFloor float64
+	}{
+		{
+			name:      "prebid key only",
+			input:     `{"prebid":{"floors":{"floormin":1.5}}}`,
+			wantFloor: 1.5,
+		},
+		{
+			name:      "openads key only",
+			input:     `{"openads":{"floors":{"floormin":2.5}}}`,
+			wantFloor: 2.5,
+		},
+		{
+			name:      "both keys, openads wins",
+			input:     `{"prebid":{"floors":{"floormin":1}},"openads":{"floors":{"floormin":99}}}`,
+			wantFloor: 99,
+		},
+		{
+			name:    "neither key",
+			input:   `{"bidder":{"x":1}}`,
+			wantNil: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var got ExtImp
+			err := jsonutil.UnmarshalValid([]byte(tc.input), &got)
+			assert.NoError(t, err)
+			if tc.wantNil {
+				assert.Nil(t, got.Prebid)
+				return
+			}
+			if assert.NotNil(t, got.Prebid) {
+				assert.Equal(t, tc.wantFloor, got.Prebid.Floors.FloorMin)
+			}
+		})
+	}
+}
+
+func TestExtImpMarshalEmitsPrebid(t *testing.T) {
+	in := []byte(`{"openads":{"floors":{"floormin":3}}}`)
+	var ext ExtImp
+	err := jsonutil.UnmarshalValid(in, &ext)
+	assert.NoError(t, err)
+
+	out, err := json.Marshal(&ext)
+	assert.NoError(t, err)
+	assert.Contains(t, string(out), `"prebid"`)
+	assert.NotContains(t, string(out), `"openads"`)
 }

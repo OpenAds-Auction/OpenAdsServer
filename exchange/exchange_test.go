@@ -5828,17 +5828,26 @@ func parseRequestAliases(r openrtb2.BidRequest) (map[string]string, error) {
 		return nil, nil
 	}
 
-	ext := struct {
-		Prebid struct {
-			Aliases map[string]string `json:"aliases"`
-		} `json:"prebid"`
-	}{}
-
+	// Top-level alias resolution: if ext.openads is present it is used
+	// in full; ext.prebid is ignored entirely in that case.
+	var ext map[string]json.RawMessage
 	if err := jsonutil.Unmarshal(r.Ext, &ext); err != nil {
 		return nil, err
 	}
-
-	return ext.Prebid.Aliases, nil
+	src, ok := ext[openrtb_ext.OpenAdsExtKey]
+	if !ok {
+		src, ok = ext[openrtb_ext.PrebidExtKey]
+	}
+	if !ok {
+		return nil, nil
+	}
+	var pe struct {
+		Aliases map[string]string `json:"aliases"`
+	}
+	if err := jsonutil.Unmarshal(src, &pe); err != nil {
+		return nil, err
+	}
+	return pe.Aliases, nil
 }
 
 func getInfoFromImp(req *openrtb_ext.RequestWrapper) (json.RawMessage, string, error) {
@@ -5851,9 +5860,14 @@ func getInfoFromImp(req *openrtb_ext.RequestWrapper) (json.RawMessage, string, e
 		return nil, "", err
 	}
 
+	// Top-level alias resolution: openads wins outright when present.
+	prebidJSON := bidderExts[openrtb_ext.OpenAdsExtKey]
+	if prebidJSON == nil {
+		prebidJSON = bidderExts[openrtb_ext.PrebidExtKey]
+	}
 	var extPrebid openrtb_ext.ExtImpPrebid
-	if bidderExts[openrtb_ext.PrebidExtKey] != nil {
-		if err := jsonutil.UnmarshalValid(bidderExts[openrtb_ext.PrebidExtKey], &extPrebid); err != nil {
+	if prebidJSON != nil {
+		if err := jsonutil.UnmarshalValid(prebidJSON, &extPrebid); err != nil {
 			return nil, "", err
 		}
 	}
