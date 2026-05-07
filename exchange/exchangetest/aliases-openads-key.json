@@ -16,11 +16,13 @@
                     "ext": {
                         "openads": {
                             "bidder": {
-                                "appnexus": {
-                                    "placementId": 1
+                                "thetradedesk": {
+                                    "publisherId": "pub1",
+                                    "supplySourceId": "src1"
                                 },
-                                "districtm": {
-                                    "placementId": 2
+                                "ttdalias": {
+                                    "publisherId": "pub2",
+                                    "supplySourceId": "src2"
                                 }
                             }
                         }
@@ -30,17 +32,17 @@
             "ext": {
                 "openads": {
                     "aliases": {
-                        "districtm": "appnexus"
+                        "ttdalias": "thetradedesk"
                     }
                 }
             }
         },
         "usersyncs": {
-            "appnexus": "123"
+            "thetradedesk": "123"
         }
     },
     "outgoingRequests": {
-        "appnexus": {
+        "thetradedesk": {
             "expectRequest": {
                 "ortbRequest": {
                     "id": "some-request-id",
@@ -60,7 +62,8 @@
                             },
                             "ext": {
                                 "bidder": {
-                                    "placementId": 1
+                                    "publisherId": "pub1",
+                                    "supplySourceId": "src1"
                                 }
                             }
                         }
@@ -69,11 +72,11 @@
             },
             "mockResponse": {
                 "errors": [
-                    "appnexus-error"
+                    "thetradedesk-error"
                 ]
             }
         },
-        "districtm": {
+        "ttdalias": {
             "expectRequest": {
                 "ortbRequest": {
                     "id": "some-request-id",
@@ -93,7 +96,8 @@
                             },
                             "ext": {
                                 "bidder": {
-                                    "placementId": 2
+                                    "publisherId": "pub2",
+                                    "supplySourceId": "src2"
                                 }
                             }
                         }
@@ -101,7 +105,7 @@
                     "ext": {
                         "prebid": {
                             "aliases": {
-                                "districtm": "appnexus"
+                                "ttdalias": "thetradedesk"
                             }
                         }
                     }
@@ -109,7 +113,7 @@
             },
             "mockResponse": {
                 "errors": [
-                    "districtm-error"
+                    "ttdalias-error"
                 ]
             }
         }
@@ -119,11 +123,11 @@
             "id": "some-request-id",
             "ext": {
                 "errors": {
-                    "appnexus": [
-                        "appnexus-error"
+                    "thetradedesk": [
+                        "thetradedesk-error"
                     ],
-                    "districtm": [
-                        "districtm-error"
+                    "ttdalias": [
+                        "ttdalias-error"
                     ]
                 }
             }
