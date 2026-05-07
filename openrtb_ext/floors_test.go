@@ -480,4 +480,3 @@ func TestFloorRuleDeepCopyNil(t *testing.T) {
 		t.Errorf("PriceFloorRules.DeepCopy() = %v, want %v", got, nil)
 	}
 }
-

@@ -150,7 +150,6 @@ type ExtImp struct {
 	Prebid *ImpExtPrebid `json:"prebid,omitempty"`
 }
 
-
 type ImpExtPrebid struct {
 	Floors Price `json:"floors,omitempty"`
 }
