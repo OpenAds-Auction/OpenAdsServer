@@ -660,7 +660,13 @@ func splitImps(imps []openrtb2.Imp, requestValidator ortb.RequestValidator, requ
 		}
 
 		var impExtPrebid map[string]json.RawMessage
-		if impExtPrebidJSON, exists := impExt[openrtb_ext.PrebidExtKey]; exists {
+		// Top-level alias resolution: when imp.ext.openads is present it is
+		// used in full; imp.ext.prebid is ignored entirely in that case.
+		impExtPrebidJSON, exists := impExt[openrtb_ext.OpenAdsExtKey]
+		if !exists {
+			impExtPrebidJSON, exists = impExt[openrtb_ext.PrebidExtKey]
+		}
+		if exists {
 			// validation already performed by impExt unmarshal. no error is possible here, proven by tests.
 			jsonutil.Unmarshal(impExtPrebidJSON, &impExtPrebid)
 		}
@@ -731,7 +737,8 @@ var allowedImpExtPrebidFields = map[string]interface{}{
 }
 
 var deniedImpExtFields = map[string]interface{}{
-	openrtb_ext.PrebidExtKey: struct{}{},
+	openrtb_ext.PrebidExtKey:  struct{}{},
+	openrtb_ext.OpenAdsExtKey: struct{}{},
 }
 
 func createSanitizedImpExt(impExt, impExtPrebid map[string]json.RawMessage) (map[string]json.RawMessage, error) {

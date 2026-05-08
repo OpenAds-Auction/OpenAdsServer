@@ -1,0 +1,136 @@
+{
+    "incomingRequest": {
+        "ortbRequest": {
+            "id": "some-request-id",
+            "site": {
+                "page": "test.somepage.com"
+            },
+            "imp": [
+                {
+                    "id": "my-imp-id",
+                    "video": {
+                        "mimes": [
+                            "video/mp4"
+                        ]
+                    },
+                    "ext": {
+                        "openads": {
+                            "bidder": {
+                                "thetradedesk": {
+                                    "publisherId": "pub1",
+                                    "supplySourceId": "src1"
+                                },
+                                "ttdalias": {
+                                    "publisherId": "pub2",
+                                    "supplySourceId": "src2"
+                                }
+                            }
+                        }
+                    }
+                }
+            ],
+            "ext": {
+                "openads": {
+                    "aliases": {
+                        "ttdalias": "thetradedesk"
+                    }
+                }
+            }
+        },
+        "usersyncs": {
+            "thetradedesk": "123"
+        }
+    },
+    "outgoingRequests": {
+        "thetradedesk": {
+            "expectRequest": {
+                "ortbRequest": {
+                    "id": "some-request-id",
+                    "site": {
+                        "page": "test.somepage.com"
+                    },
+                    "user": {
+                        "buyeruid": "123"
+                    },
+                    "imp": [
+                        {
+                            "id": "my-imp-id",
+                            "video": {
+                                "mimes": [
+                                    "video/mp4"
+                                ]
+                            },
+                            "ext": {
+                                "bidder": {
+                                    "publisherId": "pub1",
+                                    "supplySourceId": "src1"
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "mockResponse": {
+                "errors": [
+                    "thetradedesk-error"
+                ]
+            }
+        },
+        "ttdalias": {
+            "expectRequest": {
+                "ortbRequest": {
+                    "id": "some-request-id",
+                    "site": {
+                        "page": "test.somepage.com"
+                    },
+                    "user": {
+                        "buyeruid": "123"
+                    },
+                    "imp": [
+                        {
+                            "id": "my-imp-id",
+                            "video": {
+                                "mimes": [
+                                    "video/mp4"
+                                ]
+                            },
+                            "ext": {
+                                "bidder": {
+                                    "publisherId": "pub2",
+                                    "supplySourceId": "src2"
+                                }
+                            }
+                        }
+                    ],
+                    "ext": {
+                        "prebid": {
+                            "aliases": {
+                                "ttdalias": "thetradedesk"
+                            }
+                        }
+                    }
+                }
+            },
+            "mockResponse": {
+                "errors": [
+                    "ttdalias-error"
+                ]
+            }
+        }
+    },
+    "response": {
+        "bids": {
+            "id": "some-request-id",
+            "ext": {
+                "errors": {
+                    "thetradedesk": [
+                        "thetradedesk-error"
+                    ],
+                    "ttdalias": [
+                        "ttdalias-error"
+                    ]
+                }
+            }
+        }
+    }
+}

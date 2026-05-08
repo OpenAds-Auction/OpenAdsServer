@@ -1078,6 +1078,71 @@ func TestReferer(t *testing.T) {
 	}
 }
 
+func TestParseImpInfoOpenAdsAlias(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantImp openrtb_ext.ExtImpPrebid
+	}{
+		{
+			name:    "openads only at imp.ext",
+			input:   `{"imp":[{"id":"imp1","ext":{"openads":{"storedrequest":{"id":"42"},"options":{"echovideoattrs":true}}}}]}`,
+			wantImp: openrtb_ext.ExtImpPrebid{StoredRequest: &openrtb_ext.ExtStoredRequest{ID: "42"}, Options: &openrtb_ext.Options{EchoVideoAttrs: true}},
+		},
+		{
+			name:    "both keys, openads wins",
+			input:   `{"imp":[{"id":"imp1","ext":{"prebid":{"storedrequest":{"id":"FROM_PREBID"}},"openads":{"storedrequest":{"id":"FROM_OPENADS"}}}}]}`,
+			wantImp: openrtb_ext.ExtImpPrebid{StoredRequest: &openrtb_ext.ExtStoredRequest{ID: "FROM_OPENADS"}},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			impInfo, errs := parseImpInfo([]byte(tc.input))
+			assert.Empty(t, errs, "no errors expected")
+			if assert.Len(t, impInfo, 1) {
+				assert.Equal(t, tc.wantImp, impInfo[0].ImpExtPrebid)
+			}
+		})
+	}
+}
+
+func TestGetStoredRequestIdOpenAdsAlias(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantID  string
+		wantHas bool
+	}{
+		{
+			name:    "openads alias",
+			input:   `{"ext":{"openads":{"storedrequest":{"id":"sr-99"}}}}`,
+			wantID:  "sr-99",
+			wantHas: true,
+		},
+		{
+			name:    "openads wins over prebid",
+			input:   `{"ext":{"prebid":{"storedrequest":{"id":"FROM_PREBID"}},"openads":{"storedrequest":{"id":"FROM_OPENADS"}}}}`,
+			wantID:  "FROM_OPENADS",
+			wantHas: true,
+		},
+		{
+			name:    "neither",
+			input:   `{"ext":{"data":{}}}`,
+			wantID:  "",
+			wantHas: false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			id, has, err := getStoredRequestId([]byte(tc.input))
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantHas, has)
+			assert.Equal(t, tc.wantID, id)
+		})
+	}
+}
+
 func TestParseImpInfoSingleImpression(t *testing.T) {
 
 	expectedRes := []ImpExtPrebidData{

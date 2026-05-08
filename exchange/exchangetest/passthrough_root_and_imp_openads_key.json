@@ -1,0 +1,132 @@
+{
+    "passthrough_flag": true,
+    "incomingRequest": {
+        "ortbRequest": {
+            "id": "some-request-id",
+            "site": {
+                "page": "test.somepage.com"
+            },
+            "imp": [
+                {
+                    "id": "my-imp-id",
+                    "video": {
+                        "mimes": [
+                            "video/mp4"
+                        ]
+                    },
+                    "ext": {
+                        "openads": {
+                            "bidder": {
+                                "thetradedesk": {
+                                    "publisherId": "pub1",
+                                    "supplySourceId": "src1"
+                                }
+                            },
+                            "passthrough": {
+                                "imp_passthrough_val": 20
+                            }
+                        }
+                    }
+                }
+            ],
+            "ext": {
+                "openads": {
+                    "passthrough": {
+                        "bid_response_passthrough": 20
+                    }
+                }
+            }
+        }
+    },
+    "outgoingRequests": {
+        "thetradedesk": {
+            "expectRequest": {
+                "ortbRequest": {
+                    "id": "some-request-id",
+                    "site": {
+                        "page": "test.somepage.com"
+                    },
+                    "imp": [
+                        {
+                            "id": "my-imp-id",
+                            "video": {
+                                "mimes": [
+                                    "video/mp4"
+                                ]
+                            },
+                            "ext": {
+                                "bidder": {
+                                    "publisherId": "pub1",
+                                    "supplySourceId": "src1"
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "mockResponse": {
+                "pbsSeatBids": [
+                    {
+                        "pbsBids": [
+                            {
+                                "ortbBid": {
+                                    "id": "ttd-bid",
+                                    "impid": "my-imp-id",
+                                    "price": 0.3,
+                                    "w": 200,
+                                    "h": 250,
+                                    "crid": "creative-1",
+                                    "ext": {
+                                        "someField": "someValue",
+                                        "origbidcpm": 0.3
+                                    }
+                                },
+                                "bidType": "video"
+                            }
+                        ],
+                        "seat": "thetradedesk"
+                    }
+                ]
+            }
+        }
+    },
+    "response": {
+        "bids": {
+            "id": "some-request-id",
+            "seatbid": [
+                {
+                    "seat": "thetradedesk",
+                    "bid": [
+                        {
+                            "id": "ttd-bid",
+                            "impid": "my-imp-id",
+                            "price": 0.3,
+                            "w": 200,
+                            "h": 250,
+                            "crid": "creative-1",
+                            "ext": {
+                                "someField": "someValue",
+                                "origbidcpm": 0.3,
+                                "prebid": {
+                                    "meta": {
+                                    },
+                                    "type": "video",
+                                    "passthrough": {
+                                        "imp_passthrough_val": 20
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "ext": {
+            "prebid": {
+                "passthrough": {
+                    "bid_response_passthrough": 20
+                }
+            }
+        }
+    }
+}

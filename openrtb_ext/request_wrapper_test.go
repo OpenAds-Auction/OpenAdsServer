@@ -2476,3 +2476,68 @@ func TestRegExtGetGPCSetGPC(t *testing.T) {
 	assert.Equal(t, regExtGPC, gpc)
 	assert.NotSame(t, regExtGPC, gpc)
 }
+
+func TestRequestExtOpenAdsAlias(t *testing.T) {
+	t.Run("openads decodes into prebid and marshals as prebid", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"openads":{"debug":true,"channel":{"name":"pbjs","version":"v10"}}}`))
+		assert.NoError(t, err)
+
+		got := re.GetPrebid()
+		if assert.NotNil(t, got) {
+			assert.True(t, got.Debug)
+			if assert.NotNil(t, got.Channel) {
+				assert.Equal(t, "pbjs", got.Channel.Name)
+			}
+		}
+
+		// Re-marshal: outbound must use "prebid", not "openads".
+		re.SetPrebid(re.GetPrebid())
+		out, err := re.marshal()
+		assert.NoError(t, err)
+		assert.Contains(t, string(out), `"prebid"`)
+		assert.NotContains(t, string(out), `"openads"`)
+	})
+
+	t.Run("both keys present, openads wins", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"prebid":{"debug":true},"openads":{"debug":false}}`))
+		assert.NoError(t, err)
+		assert.False(t, re.GetPrebid().Debug)
+
+		re.SetPrebid(re.GetPrebid())
+		out, err := re.marshal()
+		assert.NoError(t, err)
+		assert.NotContains(t, string(out), `"openads"`)
+	})
+}
+
+func TestImpExtOpenAdsAlias(t *testing.T) {
+	t.Run("openads decodes into prebid and marshals as prebid", func(t *testing.T) {
+		ie := &ImpExt{}
+		err := ie.unmarshal([]byte(`{"openads":{"storedrequest":{"id":"sr-7"}}}`))
+		assert.NoError(t, err)
+		got := ie.GetPrebid()
+		if assert.NotNil(t, got) && assert.NotNil(t, got.StoredRequest) {
+			assert.Equal(t, "sr-7", got.StoredRequest.ID)
+		}
+
+		ie.SetPrebid(ie.GetPrebid())
+		out, err := ie.marshal()
+		assert.NoError(t, err)
+		assert.Contains(t, string(out), `"prebid"`)
+		assert.NotContains(t, string(out), `"openads"`)
+	})
+
+	t.Run("both keys present, openads wins", func(t *testing.T) {
+		ie := &ImpExt{}
+		err := ie.unmarshal([]byte(`{"prebid":{"storedrequest":{"id":"FROM_PREBID"}},"openads":{"storedrequest":{"id":"FROM_OPENADS"}}}`))
+		assert.NoError(t, err)
+		assert.Equal(t, "FROM_OPENADS", ie.GetPrebid().StoredRequest.ID)
+
+		ie.SetPrebid(ie.GetPrebid())
+		out, err := ie.marshal()
+		assert.NoError(t, err)
+		assert.NotContains(t, string(out), `"openads"`)
+	})
+}

@@ -148,10 +148,10 @@ func TestBuilder(t *testing.T) {
 
 func TestHandleBidderRequestHook_Success(t *testing.T) {
 	tests := []struct {
-		name        string
-		initialExt  json.RawMessage
+		name         string
+		initialExt   json.RawMessage
 		mockResponse []SignatureWrapper
-		expectedSig Signature
+		expectedSig  Signature
 	}{
 		{
 			name:       "add int_sigs to nil ext",
@@ -188,7 +188,7 @@ func TestHandleBidderRequestHook_Success(t *testing.T) {
 		},
 		{
 			name:       "replace openads with int_sigs",
-			initialExt: json.RawMessage(`{"openads": 1, "prebid": {"debug": true}}`),
+			initialExt: json.RawMessage(`{"openads": {"version": 0, "int_sigs": []}, "prebid": {"debug": true}}`),
 			mockResponse: []SignatureWrapper{
 				{Name: "testbidder", SIS: Signature{Envelope: "envelope-3", Source: "source-3"}},
 			},
@@ -658,7 +658,7 @@ func TestHandleBidderRequestHook_MutationTracking(t *testing.T) {
 
 	assert.Equal(t, SchemaVersion, openadsExt.Version)
 	require.Len(t, openadsExt.IntSigs, 1)
-	
+
 	expectedSig := Signature{
 		Envelope: "test-signature",
 		Source:   "test-source",
@@ -832,7 +832,7 @@ func TestTCPIntegration(t *testing.T) {
 
 	assert.Equal(t, SchemaVersion, openadsExt.Version)
 	require.Len(t, openadsExt.IntSigs, 1)
-	
+
 	expectedSig := Signature{
 		Envelope: "sig-1",
 		Source:   "source-1",
@@ -938,7 +938,7 @@ func TestUDSIntegration(t *testing.T) {
 
 	assert.Equal(t, SchemaVersion, openadsExt.Version)
 	require.Len(t, openadsExt.IntSigs, 1)
-	
+
 	expectedSig := Signature{
 		Envelope: "sig-1",
 		Source:   "source-1",
