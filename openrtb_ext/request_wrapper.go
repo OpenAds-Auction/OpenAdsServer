@@ -749,12 +749,13 @@ func (ue *UserExt) Clone() *UserExt {
 // ---------------------------------------------------------------
 
 type RequestExt struct {
-	ext         map[string]json.RawMessage
-	extDirty    bool
-	prebid      *ExtRequestPrebid
-	prebidDirty bool
-	schain      *openrtb2.SupplyChain // ORTB 2.4 location
-	schainDirty bool
+	ext              map[string]json.RawMessage
+	extDirty         bool
+	prebid           *ExtRequestPrebid
+	prebidDirty      bool
+	schain           *openrtb2.SupplyChain // ORTB 2.4 location
+	schainDirty      bool
+	useOpenAdsExtKey bool
 }
 
 func (re *RequestExt) unmarshal(extJson json.RawMessage) error {
@@ -777,6 +778,7 @@ func (re *RequestExt) unmarshal(extJson json.RawMessage) error {
 	// stored under prebidKey so outbound marshaling emits "prebid".
 	prebidJson, hasPrebid := re.ext[OpenAdsExtKey]
 	if hasPrebid {
+		re.useOpenAdsExtKey = true
 		re.ext[prebidKey] = prebidJson
 	} else {
 		prebidJson, hasPrebid = re.ext[prebidKey]
@@ -844,6 +846,10 @@ func (re *RequestExt) marshal() (json.RawMessage, error) {
 		return nil, nil
 	}
 	return jsonutil.Marshal(re.ext)
+}
+
+func (re *RequestExt) UseOpenAdsExtKey() bool {
+	return re.useOpenAdsExtKey
 }
 
 func (re *RequestExt) Dirty() bool {

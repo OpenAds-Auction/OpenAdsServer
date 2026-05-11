@@ -2512,6 +2512,36 @@ func TestRequestExtOpenAdsAlias(t *testing.T) {
 	})
 }
 
+func TestRequestExtUseOpenAdsExtKey(t *testing.T) {
+	t.Run("openads key sets flag true", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"openads":{"debug":true}}`))
+		assert.NoError(t, err)
+		assert.True(t, re.UseOpenAdsExtKey())
+	})
+
+	t.Run("prebid key leaves flag false", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"prebid":{"debug":true}}`))
+		assert.NoError(t, err)
+		assert.False(t, re.UseOpenAdsExtKey())
+	})
+
+	t.Run("no ext key leaves flag false", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{}`))
+		assert.NoError(t, err)
+		assert.False(t, re.UseOpenAdsExtKey())
+	})
+
+	t.Run("both keys present, flag true because openads wins", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"prebid":{"debug":true},"openads":{"debug":false}}`))
+		assert.NoError(t, err)
+		assert.True(t, re.UseOpenAdsExtKey())
+	})
+}
+
 func TestImpExtOpenAdsAlias(t *testing.T) {
 	t.Run("openads decodes into prebid and marshals as prebid", func(t *testing.T) {
 		ie := &ImpExt{}
