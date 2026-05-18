@@ -5102,12 +5102,190 @@ func TestSendAuctionResponse_LogsErrors(t *testing.T) {
 			ao := analytics.AuctionObject{}
 			account := &config.Account{DebugAllow: true}
 
-			_, ao = sendAuctionResponse(writer, test.hookExecutor, test.response, test.request, account, labels, ao)
+			_, ao = sendAuctionResponse(writer, test.hookExecutor, test.response, test.request, account, labels, ao, false)
 
 			assert.Equal(t, ao.Errors, test.expectedErrors, "Invalid errors.")
 			assert.Equal(t, test.expectedStatus, ao.Status, "Invalid HTTP response status.")
 		})
 	}
+}
+
+func TestSendAuctionResponse_OpenAdsExtKey(t *testing.T) {
+	hookExecutor := &mockStageExecutor{}
+
+	bidResponse := &openrtb2.BidResponse{
+		ID:  "test-response",
+		Ext: json.RawMessage(`{"prebid":{"auctiontimestamp":1715184000},"responsetimemillis":{"ttd":42}}`),
+		SeatBid: []openrtb2.SeatBid{
+			{
+				Seat: "ttd",
+				Bid: []openrtb2.Bid{
+					{
+						ID:  "bid-1",
+						Ext: json.RawMessage(`{"prebid":{"type":"banner","meta":{"adaptercode":"ttd"}},"origbidcpm":1.5}`),
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("ext.openads request produces openads response keys", func(t *testing.T) {
+		writer := httptest.NewRecorder()
+		labels := metrics.Labels{}
+		ao := analytics.AuctionObject{}
+		account := &config.Account{}
+
+		responseCopy := *bidResponse
+		responseCopy.SeatBid = make([]openrtb2.SeatBid, len(bidResponse.SeatBid))
+		copy(responseCopy.SeatBid, bidResponse.SeatBid)
+		responseCopy.SeatBid[0].Bid = make([]openrtb2.Bid, len(bidResponse.SeatBid[0].Bid))
+		copy(responseCopy.SeatBid[0].Bid, bidResponse.SeatBid[0].Bid)
+
+		sendAuctionResponse(writer, hookExecutor, &responseCopy, &openrtb2.BidRequest{ID: "test"}, account, labels, ao, true)
+
+		body := writer.Body.String()
+
+		var resp openrtb2.BidResponse
+		assert.NoError(t, json.Unmarshal([]byte(body), &resp))
+
+		var respExt map[string]json.RawMessage
+		assert.NoError(t, json.Unmarshal(resp.Ext, &respExt))
+		assert.Contains(t, respExt, "openads")
+		assert.NotContains(t, respExt, "prebid")
+
+		var bidExt map[string]json.RawMessage
+		assert.NoError(t, json.Unmarshal(resp.SeatBid[0].Bid[0].Ext, &bidExt))
+		assert.Contains(t, bidExt, "openads")
+		assert.NotContains(t, bidExt, "prebid")
+	})
+
+	t.Run("ext.prebid request preserves prebid response keys", func(t *testing.T) {
+		writer := httptest.NewRecorder()
+		labels := metrics.Labels{}
+		ao := analytics.AuctionObject{}
+		account := &config.Account{}
+
+		responseCopy := *bidResponse
+		responseCopy.SeatBid = make([]openrtb2.SeatBid, len(bidResponse.SeatBid))
+		copy(responseCopy.SeatBid, bidResponse.SeatBid)
+		responseCopy.SeatBid[0].Bid = make([]openrtb2.Bid, len(bidResponse.SeatBid[0].Bid))
+		copy(responseCopy.SeatBid[0].Bid, bidResponse.SeatBid[0].Bid)
+
+		sendAuctionResponse(writer, hookExecutor, &responseCopy, &openrtb2.BidRequest{ID: "test"}, account, labels, ao, false)
+
+		body := writer.Body.String()
+
+		var resp openrtb2.BidResponse
+		assert.NoError(t, json.Unmarshal([]byte(body), &resp))
+
+		var respExt map[string]json.RawMessage
+		assert.NoError(t, json.Unmarshal(resp.Ext, &respExt))
+		assert.Contains(t, respExt, "prebid")
+		assert.NotContains(t, respExt, "openads")
+
+		var bidExt map[string]json.RawMessage
+		assert.NoError(t, json.Unmarshal(resp.SeatBid[0].Bid[0].Ext, &bidExt))
+		assert.Contains(t, bidExt, "prebid")
+		assert.NotContains(t, bidExt, "openads")
+	})
+}
+
+func TestRekeyPrebidInJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    json.RawMessage
+		expected json.RawMessage
+	}{
+		{
+			name:     "renames prebid to openads",
+			input:    json.RawMessage(`{"prebid":{"auctiontimestamp":123},"responsetimemillis":{}}`),
+			expected: json.RawMessage(`{"openads":{"auctiontimestamp":123},"responsetimemillis":{}}`),
+		},
+		{
+			name:     "no prebid key is no-op",
+			input:    json.RawMessage(`{"other":{"foo":"bar"}}`),
+			expected: json.RawMessage(`{"other":{"foo":"bar"}}`),
+		},
+		{
+			name:     "empty input returns empty",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name:     "invalid JSON returns unchanged",
+			input:    json.RawMessage(`not json`),
+			expected: json.RawMessage(`not json`),
+		},
+		{
+			name:     "nested prebid keys are untouched",
+			input:    json.RawMessage(`{"prebid":{"seatnonbid":[{"nonbid":[{"ext":{"prebid":{"bid":{}}}}]}]}}`),
+			expected: json.RawMessage(`{"openads":{"seatnonbid":[{"nonbid":[{"ext":{"prebid":{"bid":{}}}}]}]}}`),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := rekeyPrebidInJSON(tc.input)
+			if tc.expected == nil {
+				assert.Nil(t, result)
+			} else if !json.Valid(tc.expected) {
+				assert.Equal(t, string(tc.expected), string(result))
+			} else {
+				assert.JSONEq(t, string(tc.expected), string(result))
+			}
+		})
+	}
+}
+
+func TestRekeyResponseForOpenAds(t *testing.T) {
+	t.Run("renames response ext and bid ext", func(t *testing.T) {
+		response := &openrtb2.BidResponse{
+			Ext: json.RawMessage(`{"prebid":{"auctiontimestamp":123},"responsetimemillis":{}}`),
+			SeatBid: []openrtb2.SeatBid{
+				{
+					Bid: []openrtb2.Bid{
+						{Ext: json.RawMessage(`{"prebid":{"type":"banner","meta":{"adaptercode":"ttd"}},"origbidcpm":1.5}`)},
+						{Ext: json.RawMessage(`{"prebid":{"type":"video"},"origbidcpm":2.0}`)},
+					},
+				},
+			},
+		}
+
+		rekeyResponseForOpenAds(response)
+
+		assert.Contains(t, string(response.Ext), `"openads"`)
+		assert.NotContains(t, string(response.Ext), `"prebid"`)
+
+		for _, sb := range response.SeatBid {
+			for _, bid := range sb.Bid {
+				assert.Contains(t, string(bid.Ext), `"openads"`)
+				assert.NotContains(t, string(bid.Ext), `"prebid"`)
+			}
+		}
+	})
+
+	t.Run("nil response is safe", func(t *testing.T) {
+		rekeyResponseForOpenAds(nil)
+	})
+
+	t.Run("response with no ext is safe", func(t *testing.T) {
+		response := &openrtb2.BidResponse{}
+		rekeyResponseForOpenAds(response)
+		assert.Nil(t, response.Ext)
+	})
+
+	t.Run("preserves errors.prebid and warnings.prebid as bidder names", func(t *testing.T) {
+		response := &openrtb2.BidResponse{
+			Ext: json.RawMessage(`{"prebid":{"auctiontimestamp":123},"errors":{"prebid":["some error"]},"warnings":{"prebid":["some warning"]}}`),
+		}
+		rekeyResponseForOpenAds(response)
+
+		assert.Contains(t, string(response.Ext), `"openads"`)
+
+		var ext map[string]json.RawMessage
+		jsonutil.Unmarshal(response.Ext, &ext)
+		assert.Contains(t, string(ext["errors"]), `"prebid"`)
+		assert.Contains(t, string(ext["warnings"]), `"prebid"`)
+	})
 }
 
 func TestParseRequestMultiBid(t *testing.T) {

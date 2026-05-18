@@ -300,7 +300,12 @@ func (deps *endpointDeps) Auction(w http.ResponseWriter, r *http.Request, _ http
 	if err != nil {
 		logger.Errorf("Error setting seat non-bid: %v", err)
 	}
-	labels, ao = sendAuctionResponse(w, hookExecutor, response, req.BidRequest, account, labels, ao)
+
+	useOpenAdsExtKey := false
+	if reqExt, err := req.GetRequestExt(); err == nil && reqExt != nil && reqExt.UseOpenAdsExtKey() {
+		useOpenAdsExtKey = true
+	}
+	labels, ao = sendAuctionResponse(w, hookExecutor, response, req.BidRequest, account, labels, ao, useOpenAdsExtKey)
 }
 
 // setSeatNonBidRaw is transitional function for setting SeatNonBid inside bidResponse.Ext
@@ -347,7 +352,7 @@ func rejectAuctionRequest(
 	ao.Response = response
 	ao.Errors = append(ao.Errors, rejectErr)
 
-	return sendAuctionResponse(w, hookExecutor, response, request, account, labels, ao)
+	return sendAuctionResponse(w, hookExecutor, response, request, account, labels, ao, false)
 }
 
 func sendAuctionResponse(
@@ -358,6 +363,7 @@ func sendAuctionResponse(
 	account *config.Account,
 	labels metrics.Labels,
 	ao analytics.AuctionObject,
+	useOpenAdsExtKey bool,
 ) (metrics.Labels, analytics.AuctionObject) {
 	hookExecutor.ExecuteAuctionResponseStage(response)
 
@@ -388,6 +394,12 @@ func sendAuctionResponse(
 	// Exitpoint will modify the response and set response headers according to hook implementation.
 	finalResponse := hookExecutor.ExecuteExitpointStage(response, w)
 
+	if useOpenAdsExtKey {
+		if br, ok := finalResponse.(*openrtb2.BidResponse); ok {
+			rekeyResponseForOpenAds(br)
+		}
+	}
+
 	// If an error happens when encoding the response, there isn't much we can do.
 	// If we've sent _any_ bytes, then Go would have sent the 200 status code first.
 	// That status code can't be un-sent... so the best we can do is log the error.
@@ -397,6 +409,45 @@ func sendAuctionResponse(
 	}
 
 	return labels, ao
+}
+
+func rekeyResponseForOpenAds(response *openrtb2.BidResponse) {
+	if response == nil {
+		return
+	}
+
+	response.Ext = rekeyPrebidInJSON(response.Ext)
+
+	for i := range response.SeatBid {
+		for j := range response.SeatBid[i].Bid {
+			response.SeatBid[i].Bid[j].Ext = rekeyPrebidInJSON(response.SeatBid[i].Bid[j].Ext)
+		}
+	}
+}
+
+func rekeyPrebidInJSON(data json.RawMessage) json.RawMessage {
+	if len(data) == 0 {
+		return data
+	}
+
+	var raw map[string]json.RawMessage
+	if err := jsonutil.Unmarshal(data, &raw); err != nil {
+		return data
+	}
+
+	v, ok := raw[openrtb_ext.PrebidExtKey]
+	if !ok {
+		return data
+	}
+
+	raw[openrtb_ext.OpenAdsExtKey] = v
+	delete(raw, openrtb_ext.PrebidExtKey)
+
+	result, err := jsonutil.Marshal(raw)
+	if err != nil {
+		return data
+	}
+	return result
 }
 
 // setBrowsingTopicsHeader always set the Observe-Browsing-Topics header to a value of ?1 if the Sec-Browsing-Topics is present in request
