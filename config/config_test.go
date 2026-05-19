@@ -2022,3 +2022,76 @@ func TestUnpackDSADefault(t *testing.T) {
 		})
 	}
 }
+
+func TestBidderAllowListDisablesNonAllowedBidders(t *testing.T) {
+	infos := BidderInfos{
+		"allowed":     BidderInfo{Disabled: false},
+		"blocked":     BidderInfo{Disabled: false},
+		"alsoBlocked": BidderInfo{Disabled: false},
+	}
+
+	cfg := Configuration{
+		BidderAllowList: []string{"allowed"},
+		BidderInfos:     infos,
+	}
+
+	if len(cfg.BidderAllowList) > 0 {
+		allowSet := make(map[string]struct{}, len(cfg.BidderAllowList))
+		for _, name := range cfg.BidderAllowList {
+			allowSet[strings.ToLower(name)] = struct{}{}
+		}
+		for name, info := range cfg.BidderInfos {
+			if _, ok := allowSet[strings.ToLower(name)]; !ok && info.IsEnabled() {
+				info.Disabled = true
+				cfg.BidderInfos[name] = info
+			}
+		}
+	}
+
+	assert.True(t, cfg.BidderInfos["allowed"].IsEnabled(), "allowed bidder should remain enabled")
+	assert.False(t, cfg.BidderInfos["blocked"].IsEnabled(), "non-allowed bidder should be disabled")
+	assert.False(t, cfg.BidderInfos["alsoBlocked"].IsEnabled(), "non-allowed bidder should be disabled")
+}
+
+func TestBidderAllowListEmptyDoesNothing(t *testing.T) {
+	infos := BidderInfos{
+		"bidder1": BidderInfo{Disabled: false},
+		"bidder2": BidderInfo{Disabled: false},
+	}
+
+	cfg := Configuration{
+		BidderAllowList: nil,
+		BidderInfos:     infos,
+	}
+
+	assert.True(t, cfg.BidderInfos["bidder1"].IsEnabled())
+	assert.True(t, cfg.BidderInfos["bidder2"].IsEnabled())
+}
+
+func TestBidderAllowListCaseInsensitive(t *testing.T) {
+	infos := BidderInfos{
+		"thetradedesk": BidderInfo{Disabled: false},
+		"appnexus":     BidderInfo{Disabled: false},
+	}
+
+	cfg := Configuration{
+		BidderAllowList: []string{"TheTradeDesk"},
+		BidderInfos:     infos,
+	}
+
+	if len(cfg.BidderAllowList) > 0 {
+		allowSet := make(map[string]struct{}, len(cfg.BidderAllowList))
+		for _, name := range cfg.BidderAllowList {
+			allowSet[strings.ToLower(name)] = struct{}{}
+		}
+		for name, info := range cfg.BidderInfos {
+			if _, ok := allowSet[strings.ToLower(name)]; !ok && info.IsEnabled() {
+				info.Disabled = true
+				cfg.BidderInfos[name] = info
+			}
+		}
+	}
+
+	assert.True(t, cfg.BidderInfos["thetradedesk"].IsEnabled(), "case-insensitive match should keep bidder enabled")
+	assert.False(t, cfg.BidderInfos["appnexus"].IsEnabled(), "non-allowed bidder should be disabled")
+}

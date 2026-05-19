@@ -893,6 +893,20 @@ func New(v *viper.Viper, bidderInfos BidderInfos, normalizeBidderName openrtb_ex
 	}
 	c.BidderInfos = mergedBidderInfos
 
+	if len(c.BidderAllowList) > 0 {
+		allowSet := make(map[string]struct{}, len(c.BidderAllowList))
+		for _, name := range c.BidderAllowList {
+			allowSet[strings.ToLower(name)] = struct{}{}
+		}
+		for name, info := range c.BidderInfos {
+			if _, allowed := allowSet[strings.ToLower(name)]; !allowed && info.IsEnabled() {
+				info.Disabled = true
+				c.BidderInfos[name] = info
+			}
+		}
+		logger.Infof("Bidder allow list active: only %v permitted; all other bidders disabled", c.BidderAllowList)
+	}
+
 	logger.Infof("Logging the resolved configuration:")
 	logGeneral(reflect.ValueOf(c), "  \t")
 	if errs := c.validate(v); len(errs) > 0 {
