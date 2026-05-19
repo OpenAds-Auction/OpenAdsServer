@@ -184,6 +184,10 @@ func (cfg *Configuration) validate(v *viper.Viper) []error {
 		logger.Warnf(`account_defaults.events has no effect as the feature is under development.`)
 	}
 
+	if len(cfg.BidderAllowList) == 0 {
+		errs = append(errs, errors.New("bidder_allow_list is required and must contain at least one bidder"))
+	}
+
 	errs = cfg.Experiment.validate(errs)
 	errs = cfg.BidderInfos.validate(errs)
 	errs = cfg.AccountDefaults.Privacy.IPv6Config.Validate(errs)
@@ -892,6 +896,20 @@ func New(v *viper.Viper, bidderInfos BidderInfos, normalizeBidderName openrtb_ex
 		return nil, err
 	}
 	c.BidderInfos = mergedBidderInfos
+
+	if len(c.BidderAllowList) > 0 {
+		allowSet := make(map[string]struct{}, len(c.BidderAllowList))
+		for _, name := range c.BidderAllowList {
+			allowSet[strings.ToLower(name)] = struct{}{}
+		}
+		for name, info := range c.BidderInfos {
+			if _, allowed := allowSet[strings.ToLower(name)]; !allowed && info.IsEnabled() {
+				info.Disabled = true
+				c.BidderInfos[name] = info
+			}
+		}
+		logger.Infof("Bidder allow list active: only %v permitted; all other bidders disabled", c.BidderAllowList)
+	}
 
 	logger.Infof("Logging the resolved configuration:")
 	logGeneral(reflect.ValueOf(c), "  \t")
