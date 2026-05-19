@@ -437,6 +437,9 @@ external_url: http://prebid-server.prebid.org/
 host: prebid-server.prebid.org
 port: 1234
 admin_port: 5678
+bidder_allow_list:
+  - bidder1
+  - bidder2
 stored_requests_timeout_ms: 75
 compression:
     request:
@@ -998,6 +1001,7 @@ func TestValidateConfig(t *testing.T) {
 				},
 			},
 		},
+		BidderAllowList: []string{"thetradedesk"},
 	}
 
 	v := viper.New()
@@ -1412,6 +1416,7 @@ func TestNewCallsRequestValidation(t *testing.T) {
 		v := viper.New()
 		SetupViper(v, "", bidderInfos)
 		v.Set("gdpr.default_value", "0")
+		v.Set("bidder_allow_list", []string{"bidder1", "bidder2"})
 		v.SetConfigType("yaml")
 		v.ReadConfig(bytes.NewBuffer([]byte(
 			`request_validation:
@@ -1451,6 +1456,7 @@ func newDefaultConfig(t *testing.T) (*Configuration, *viper.Viper) {
 	v := viper.New()
 	SetupViper(v, "", bidderInfos)
 	v.Set("gdpr.default_value", "0")
+	v.Set("bidder_allow_list", []string{"bidder1", "bidder2"})
 	v.SetConfigType("yaml")
 	cfg, err := New(v, bidderInfos, mockNormalizeBidderName)
 	assert.NoError(t, err, "Setting up config should work but it doesn't")
@@ -1477,6 +1483,9 @@ func doTimeoutTest(t *testing.T, expected int, requested int, max uint64, def ui
 
 func TestSpecialFeature1VendorExceptionMap(t *testing.T) {
 	baseConfig := []byte(`
+    bidder_allow_list:
+      - bidder1
+      - bidder2
     gdpr:
       default_value: 0
       tcf2:
@@ -2053,19 +2062,24 @@ func TestBidderAllowListDisablesNonAllowedBidders(t *testing.T) {
 	assert.False(t, cfg.BidderInfos["alsoBlocked"].IsEnabled(), "non-allowed bidder should be disabled")
 }
 
-func TestBidderAllowListEmptyDoesNothing(t *testing.T) {
-	infos := BidderInfos{
-		"bidder1": BidderInfo{Disabled: false},
-		"bidder2": BidderInfo{Disabled: false},
-	}
+func TestBidderAllowListEmptyFails(t *testing.T) {
+	v := viper.New()
+	SetupViper(v, "", bidderInfos)
 
-	cfg := Configuration{
-		BidderAllowList: nil,
-		BidderInfos:     infos,
-	}
+	v.Set("bidder_allow_list", []string{})
 
-	assert.True(t, cfg.BidderInfos["bidder1"].IsEnabled())
-	assert.True(t, cfg.BidderInfos["bidder2"].IsEnabled())
+	_, err := New(v, bidderInfos, mockNormalizeBidderName)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "bidder_allow_list is required")
+}
+
+func TestBidderAllowListNilFails(t *testing.T) {
+	v := viper.New()
+	SetupViper(v, "", bidderInfos)
+
+	_, err := New(v, bidderInfos, mockNormalizeBidderName)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "bidder_allow_list is required")
 }
 
 func TestBidderAllowListCaseInsensitive(t *testing.T) {

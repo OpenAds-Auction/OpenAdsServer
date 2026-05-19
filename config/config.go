@@ -184,6 +184,10 @@ func (cfg *Configuration) validate(v *viper.Viper) []error {
 		logger.Warnf(`account_defaults.events has no effect as the feature is under development.`)
 	}
 
+	if len(cfg.BidderAllowList) == 0 {
+		errs = append(errs, errors.New("bidder_allow_list is required and must contain at least one bidder"))
+	}
+
 	errs = cfg.Experiment.validate(errs)
 	errs = cfg.BidderInfos.validate(errs)
 	errs = cfg.AccountDefaults.Privacy.IPv6Config.Validate(errs)
