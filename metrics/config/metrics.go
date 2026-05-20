@@ -420,6 +420,18 @@ func (me *MultiMetricsEngine) RecordAdapterConnectionDialTime(adapterName openrt
 	}
 }
 
+func (me *MultiMetricsEngine) RecordCollateVastVersionMismatch(adapterName openrtb_ext.BidderName) {
+	for _, thisME := range *me {
+		thisME.RecordCollateVastVersionMismatch(adapterName)
+	}
+}
+
+func (me *MultiMetricsEngine) RecordCollateVastMissingMetadata(adapterName openrtb_ext.BidderName) {
+	for _, thisME := range *me {
+		thisME.RecordCollateVastMissingMetadata(adapterName)
+	}
+}
+
 // NilMetricsEngine implements the MetricsEngine interface where no metrics are actually captured. This is
 // used if no metric backend is configured and also for tests.
 type NilMetricsEngine struct{}
@@ -619,4 +631,10 @@ func (me *NilMetricsEngine) RecordAdapterConnectionDialError(adapterName openrtb
 }
 
 func (me *NilMetricsEngine) RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration) {
+}
+
+func (me *NilMetricsEngine) RecordCollateVastVersionMismatch(adapterName openrtb_ext.BidderName) {
+}
+
+func (me *NilMetricsEngine) RecordCollateVastMissingMetadata(adapterName openrtb_ext.BidderName) {
 }

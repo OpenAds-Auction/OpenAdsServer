@@ -81,6 +81,8 @@ type Metrics struct {
 	adapterThrottled                      *prometheus.CounterVec
 	adapterConnectionDialErrors           *prometheus.CounterVec
 	adapterConnectionDialTime             *prometheus.HistogramVec
+	collateVastVersionMismatch            *prometheus.CounterVec
+	collateVastMissingMetadata            *prometheus.CounterVec
 
 	// Syncer Metrics
 	syncerRequests *prometheus.CounterVec
@@ -445,6 +447,16 @@ func NewMetrics(cfg config.PrometheusMetrics, disabledMetrics config.DisabledMet
 				append(prometheus.DefBuckets, 15, 30))
 		}
 	}
+
+	metrics.collateVastVersionMismatch = newCounter(cfg, reg,
+		"collate_vast_version_mismatch",
+		"Count of VAST ads discarded during collation due to version mismatch, labeled by adapter.",
+		[]string{adapterLabel})
+
+	metrics.collateVastMissingMetadata = newCounter(cfg, reg,
+		"collate_vast_missing_metadata",
+		"Count of VAST ads discarded during collation due to missing Advertiser or Pricing metadata, labeled by adapter.",
+		[]string{adapterLabel})
 
 	metrics.adapterBidResponseValidationSizeError = newCounter(cfg, reg,
 		"adapter_response_validation_size_err",
@@ -1216,4 +1228,16 @@ func (m *Metrics) RecordAdapterConnectionDialTime(adapterName openrtb_ext.Bidder
 	m.adapterConnectionDialTime.With(prometheus.Labels{
 		adapterLabel: strings.ToLower(string(adapterName)),
 	}).Observe(dialStartTime.Seconds())
+}
+
+func (m *Metrics) RecordCollateVastVersionMismatch(adapterName openrtb_ext.BidderName) {
+	m.collateVastVersionMismatch.With(prometheus.Labels{
+		adapterLabel: strings.ToLower(string(adapterName)),
+	}).Inc()
+}
+
+func (m *Metrics) RecordCollateVastMissingMetadata(adapterName openrtb_ext.BidderName) {
+	m.collateVastMissingMetadata.With(prometheus.Labels{
+		adapterLabel: strings.ToLower(string(adapterName)),
+	}).Inc()
 }
