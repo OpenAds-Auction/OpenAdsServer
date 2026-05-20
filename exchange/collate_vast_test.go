@@ -242,6 +242,24 @@ func TestCollateVAST_AdWithNeitherInLineNorWrapper(t *testing.T) {
 	assert.Contains(t, result.Errors[0].Error(), "neither InLine nor Wrapper")
 }
 
+func TestCollateVAST_PreservesAdAttributes(t *testing.T) {
+	bids := []VastBidInput{
+		{
+			BidID: "bid-1", ImpID: "imp-1", AdapterName: "seat",
+			AdM: `<VAST version="3.0"><Ad id="a1" sequence="1" conditionalAd="false"><InLine>` +
+				`<Advertiser>x.com</Advertiser>` +
+				`<Pricing model="CPM" currency="USD">5.00</Pricing>` +
+				`<Creatives></Creatives></InLine></Ad></VAST>`,
+		},
+	}
+
+	result := CollateVAST(bids, nilMetrics())
+
+	assert.Empty(t, result.Errors)
+	assert.Contains(t, result.VastXML, `sequence="1"`)
+	assert.Contains(t, result.VastXML, `conditionalAd="false"`)
+}
+
 func TestCollateVAST_PreservesOriginalXMLExactly(t *testing.T) {
 	original := `<InLine>` +
 		`<AdSystem>custom-sys</AdSystem>` +
