@@ -860,6 +860,14 @@ func (deps *endpointDeps) validateRequest(account *config.Account, httpReq *http
 		return []error{err}
 	}
 
+	if reqPrebid != nil && reqPrebid.CollateVast != nil && *reqPrebid.CollateVast {
+		for i, imp := range req.GetImp() {
+			if imp.Video == nil {
+				return []error{fmt.Errorf("request.imp[%d] must have a video object when collate_vast is enabled", i)}
+			}
+		}
+	}
+
 	if reqPrebid != nil {
 		requestAliases = reqPrebid.Aliases
 

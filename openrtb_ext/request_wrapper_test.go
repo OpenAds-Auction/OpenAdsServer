@@ -2542,6 +2542,63 @@ func TestRequestExtUseOpenAdsExtKey(t *testing.T) {
 	})
 }
 
+func TestRequestExtOpenAdsFields(t *testing.T) {
+	t.Run("collate_vast true under ext.openads", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"openads":{"collate_vast":true}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.NotNil(t, prebid.CollateVast)
+		assert.True(t, *prebid.CollateVast)
+	})
+
+	t.Run("return_bids false under ext.openads", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"openads":{"return_bids":false}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.NotNil(t, prebid.ReturnBids)
+		assert.False(t, *prebid.ReturnBids)
+	})
+
+	t.Run("absent fields use defaults", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"openads":{"debug":true}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.Nil(t, prebid.CollateVast, "collate_vast should be nil when absent")
+		assert.Nil(t, prebid.ReturnBids, "return_bids should be nil when absent")
+	})
+
+	t.Run("fields under ext.prebid also work", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"prebid":{"collate_vast":true,"return_bids":false}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.NotNil(t, prebid.CollateVast)
+		assert.True(t, *prebid.CollateVast)
+		assert.NotNil(t, prebid.ReturnBids)
+		assert.False(t, *prebid.ReturnBids)
+	})
+
+	t.Run("empty ext returns nil prebid", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.Nil(t, prebid)
+	})
+
+	t.Run("both keys present, openads fields win", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"prebid":{"collate_vast":false},"openads":{"collate_vast":true}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.NotNil(t, prebid.CollateVast)
+		assert.True(t, *prebid.CollateVast, "openads key should take precedence")
+	})
+}
+
 func TestImpExtOpenAdsAlias(t *testing.T) {
 	t.Run("openads decodes into prebid and marshals as prebid", func(t *testing.T) {
 		ie := &ImpExt{}

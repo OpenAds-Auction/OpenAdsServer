@@ -96,6 +96,10 @@ type ExtRequestPrebid struct {
 	SupportDeals         bool                            `json:"supportdeals,omitempty"`
 	Targeting            *ExtRequestTargeting            `json:"targeting,omitempty"`
 
+	// OpenAds-specific fields. Parsed from ext.openads (aliased to ext.prebid).
+	CollateVast *bool `json:"collate_vast,omitempty"`
+	ReturnBids  *bool `json:"return_bids,omitempty"`
+
 	//AlternateBidderCodes is populated with host's AlternateBidderCodes config if not defined in request
 	AlternateBidderCodes *ExtAlternateBidderCodes `json:"alternatebiddercodes,omitempty"`
 

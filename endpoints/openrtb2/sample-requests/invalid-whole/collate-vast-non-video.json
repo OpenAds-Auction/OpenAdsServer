@@ -1,0 +1,52 @@
+{
+    "description": "collate_vast enabled with non-video impression",
+    "mockBidRequest": {
+        "id": "some-request-id",
+        "site": {
+            "page": "test.somepage.com"
+        },
+        "imp": [
+            {
+                "id": "video-imp",
+                "video": {
+                    "mimes": ["video/mp4"],
+                    "protocols": [1, 2],
+                    "w": 640,
+                    "h": 480
+                },
+                "ext": {
+                    "prebid": {
+                        "bidder": {
+                            "appnexus": {
+                                "placementId": 12883451
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "id": "banner-imp",
+                "banner": {
+                    "w": 300,
+                    "h": 250
+                },
+                "ext": {
+                    "prebid": {
+                        "bidder": {
+                            "appnexus": {
+                                "placementId": 12883451
+                            }
+                        }
+                    }
+                }
+            }
+        ],
+        "ext": {
+            "openads": {
+                "collate_vast": true
+            }
+        }
+    },
+    "expectedErrorMessage": "Invalid request: request.imp[1] must have a video object when collate_vast is enabled",
+    "expectedReturnCode": 400
+}

@@ -6022,6 +6022,175 @@ func TestNilAuctionRequest(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestCollateVastIntegration(t *testing.T) {
+	sampleVAST := `<?xml version="1.0" encoding="UTF-8"?><VAST version="3.0"><Ad id="ad-1"><InLine><AdSystem>test</AdSystem><AdTitle>Test Ad</AdTitle><Advertiser>advertiser-one.com</Advertiser><Pricing model="CPM" currency="USD">12.50</Pricing><Creatives></Creatives></InLine></Ad></VAST>`
+
+	noBidServer := func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }
+	server := httptest.NewServer(http.HandlerFunc(noBidServer))
+	defer server.Close()
+
+	categoriesFetcher, err := newCategoryFetcher("./test/category-mapping")
+	if err != nil {
+		t.Fatalf("Failed to create a category Fetcher: %v", err)
+	}
+
+	bidderImpl := &goodSingleBidder{
+		httpRequest: &adapters.RequestData{
+			Method:  "POST",
+			Uri:     server.URL,
+			Body:    []byte(`{"key":"val"}`),
+			Headers: http.Header{},
+		},
+		bidResponse: &adapters.BidderResponse{
+			Bids: []*adapters.TypedBid{
+				{
+					Bid: &openrtb2.Bid{
+						ID:      "bid-1",
+						ImpID:   "video-imp-1",
+						Price:   12.50,
+						AdM:     sampleVAST,
+						ADomain: []string{"advertiser-one.com"},
+						Cat:     []string{"IAB1"},
+					},
+					BidType: openrtb_ext.BidTypeVideo,
+				},
+			},
+			Currency: "USD",
+		},
+	}
+
+	e := new(exchange)
+	e.adapterMap = map[openrtb_ext.BidderName]AdaptedBidder{
+		openrtb_ext.BidderAppnexus: AdaptBidder(bidderImpl, server.Client(), &config.Configuration{}, &metricsConfig.NilMetricsEngine{}, openrtb_ext.BidderAppnexus, nil, ""),
+	}
+	e.cache = &wellBehavedCache{}
+	e.me = &metricsConf.NilMetricsEngine{}
+	e.gdprPermsBuilder = fakePermissionsBuilder{
+		permissions: &permissionsMock{allowAllBidders: true},
+	}.Builder
+	e.currencyConverter = currency.NewRateConverter(&http.Client{}, time.Duration(1), "", time.Duration(0))
+	e.categoriesFetcher = categoriesFetcher
+	e.bidIDGenerator = &fakeBidIDGenerator{GenerateBidID: false, ReturnError: false}
+	e.requestSplitter = requestSplitter{
+		me:               e.me,
+		gdprPermsBuilder: e.gdprPermsBuilder,
+	}
+
+	t.Run("collate_vast produces openadscache in response ext", func(t *testing.T) {
+		bidRequest := &openrtb2.BidRequest{
+			ID: "collate-test",
+			Imp: []openrtb2.Imp{{
+				ID:    "video-imp-1",
+				Video: &openrtb2.Video{MIMEs: []string{"video/mp4"}, W: ptrutil.ToPtr[int64](640), H: ptrutil.ToPtr[int64](480)},
+				Ext:   json.RawMessage(`{"prebid":{"bidder":{"appnexus":{"placementId":1}}}}`),
+			}},
+			Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+			Ext:  json.RawMessage(`{"openads":{"collate_vast":true}}`),
+		}
+
+		auctionRequest := &AuctionRequest{
+			BidRequestWrapper: &openrtb_ext.RequestWrapper{BidRequest: bidRequest},
+			Account:           config.Account{},
+			UserSyncs:         &emptyUsersync{},
+			HookExecutor:      &hookexecution.EmptyHookExecutor{},
+			TCF2Config:        gdpr.NewTCF2Config(config.TCF2{}, config.AccountGDPR{}),
+		}
+
+		outBidResponse, err := e.HoldAuction(context.Background(), auctionRequest, &DebugLog{})
+		if !assert.NoError(t, err) || !assert.NotNil(t, outBidResponse) {
+			return
+		}
+
+		assert.NotEmpty(t, outBidResponse.SeatBid, "seatbid should be present when return_bids defaults to true")
+
+		var extResp openrtb_ext.ExtBidResponse
+		if !assert.NoError(t, jsonutil.UnmarshalValid(outBidResponse.Ext, &extResp)) {
+			return
+		}
+		if !assert.NotNil(t, extResp.Prebid, "ext.prebid should exist") {
+			return
+		}
+		if !assert.NotNil(t, extResp.Prebid.OpenAdsCache, "ext.prebid.openadscache should exist") {
+			return
+		}
+		assert.NotEmpty(t, extResp.Prebid.OpenAdsCache.Key, "cache key should not be empty")
+		assert.Contains(t, extResp.Prebid.OpenAdsCache.URL, extResp.Prebid.OpenAdsCache.Key, "cache URL should contain the key")
+	})
+
+	t.Run("return_bids false strips seatbid but keeps openadscache", func(t *testing.T) {
+		bidRequest := &openrtb2.BidRequest{
+			ID: "return-bids-false-test",
+			Imp: []openrtb2.Imp{{
+				ID:    "video-imp-1",
+				Video: &openrtb2.Video{MIMEs: []string{"video/mp4"}, W: ptrutil.ToPtr[int64](640), H: ptrutil.ToPtr[int64](480)},
+				Ext:   json.RawMessage(`{"prebid":{"bidder":{"appnexus":{"placementId":1}}}}`),
+			}},
+			Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+			Ext:  json.RawMessage(`{"openads":{"collate_vast":true,"return_bids":false}}`),
+		}
+
+		auctionRequest := &AuctionRequest{
+			BidRequestWrapper: &openrtb_ext.RequestWrapper{BidRequest: bidRequest},
+			Account:           config.Account{},
+			UserSyncs:         &emptyUsersync{},
+			HookExecutor:      &hookexecution.EmptyHookExecutor{},
+			TCF2Config:        gdpr.NewTCF2Config(config.TCF2{}, config.AccountGDPR{}),
+		}
+
+		outBidResponse, err := e.HoldAuction(context.Background(), auctionRequest, &DebugLog{})
+		if !assert.NoError(t, err) || !assert.NotNil(t, outBidResponse) {
+			return
+		}
+
+		assert.Nil(t, outBidResponse.SeatBid, "seatbid should be nil when return_bids is false")
+
+		var extResp openrtb_ext.ExtBidResponse
+		if !assert.NoError(t, jsonutil.UnmarshalValid(outBidResponse.Ext, &extResp)) {
+			return
+		}
+		if !assert.NotNil(t, extResp.Prebid, "ext.prebid should exist") {
+			return
+		}
+		if !assert.NotNil(t, extResp.Prebid.OpenAdsCache, "ext.prebid.openadscache should exist even when return_bids is false") {
+			return
+		}
+		assert.NotEmpty(t, extResp.Prebid.OpenAdsCache.Key)
+	})
+
+	t.Run("collate_vast absent does not produce openadscache", func(t *testing.T) {
+		bidRequest := &openrtb2.BidRequest{
+			ID: "no-collate-test",
+			Imp: []openrtb2.Imp{{
+				ID:    "video-imp-1",
+				Video: &openrtb2.Video{MIMEs: []string{"video/mp4"}, W: ptrutil.ToPtr[int64](640), H: ptrutil.ToPtr[int64](480)},
+				Ext:   json.RawMessage(`{"prebid":{"bidder":{"appnexus":{"placementId":1}}}}`),
+			}},
+			Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+		}
+
+		auctionRequest := &AuctionRequest{
+			BidRequestWrapper: &openrtb_ext.RequestWrapper{BidRequest: bidRequest},
+			Account:           config.Account{},
+			UserSyncs:         &emptyUsersync{},
+			HookExecutor:      &hookexecution.EmptyHookExecutor{},
+			TCF2Config:        gdpr.NewTCF2Config(config.TCF2{}, config.AccountGDPR{}),
+		}
+
+		outBidResponse, err := e.HoldAuction(context.Background(), auctionRequest, &DebugLog{})
+		if !assert.NoError(t, err) || !assert.NotNil(t, outBidResponse) {
+			return
+		}
+
+		var extResp openrtb_ext.ExtBidResponse
+		if !assert.NoError(t, jsonutil.UnmarshalValid(outBidResponse.Ext, &extResp)) {
+			return
+		}
+		if extResp.Prebid != nil {
+			assert.Nil(t, extResp.Prebid.OpenAdsCache, "openadscache should not exist when collate_vast is not set")
+		}
+	})
+}
+
 func TestSelectNewDuration(t *testing.T) {
 	type testInput struct {
 		dur       int
