@@ -899,7 +899,7 @@ func TestExtractAdapterReqBidderParamsMap(t *testing.T) {
 			name:            "malformed req.ext",
 			givenBidRequest: &openrtb2.BidRequest{Ext: json.RawMessage("malformed")},
 			want:            nil,
-			wantErr: errors.New("error decoding Request.ext"),
+			wantErr:         errors.New("error decoding Request.ext"),
 		},
 		{
 			name:            "extract bidder params from req.Ext for input request in adapter code",

@@ -43,10 +43,12 @@
         ],
         "ext": {
             "openads": {
-                "collate_vast": true
+                "cache": {
+                    "collatevast": {}
+                }
             }
         }
     },
-    "expectedErrorMessage": "Invalid request: request.imp[1] must have a video object when collate_vast is enabled",
+    "expectedErrorMessage": "Invalid request: request.imp[1] must have a video object when collatevast is enabled",
     "expectedReturnCode": 400
 }

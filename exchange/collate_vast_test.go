@@ -334,7 +334,7 @@ func TestCollateVAST_EmptyInput(t *testing.T) {
 	assert.Nil(t, result2.Errors)
 }
 
-func TestCollateVAST_FirstBidVersionUsedInOutput(t *testing.T) {
+func TestCollateVAST_SingleVersionUsedInOutput(t *testing.T) {
 	bids := []VastBidInput{
 		{
 			BidID: "bid-1", ImpID: "imp-1", AdapterName: "seat",
@@ -348,6 +348,56 @@ func TestCollateVAST_FirstBidVersionUsedInOutput(t *testing.T) {
 	result := CollateVAST(bids, nilMetrics())
 	assert.Empty(t, result.Errors)
 	assert.True(t, strings.HasPrefix(result.VastXML, `<VAST version="4.1">`))
+}
+
+func TestCollateVAST_MajorityVersionWins(t *testing.T) {
+	validAd := func(version, advertiser string) string {
+		return fmt.Sprintf(`<VAST version="%s"><Ad><InLine>`+
+			`<Advertiser>%s</Advertiser>`+
+			`<Pricing model="CPM" currency="USD">5.00</Pricing>`+
+			`<Creatives></Creatives></InLine></Ad></VAST>`, version, advertiser)
+	}
+
+	bids := []VastBidInput{
+		{BidID: "v3-1", ImpID: "imp-1", AdapterName: "seat-a", AdM: validAd("3.0", "a.com")},
+		{BidID: "v4-1", ImpID: "imp-2", AdapterName: "seat-b", AdM: validAd("4.0", "b.com")},
+		{BidID: "v4-2", ImpID: "imp-3", AdapterName: "seat-c", AdM: validAd("4.0", "c.com")},
+	}
+
+	me := newCollateMetricsMock()
+	result := CollateVAST(bids, me)
+
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0].Error(), "v3-1")
+	assert.Contains(t, result.Errors[0].Error(), `version "3.0" does not match target "4.0"`)
+	assert.Equal(t, 1, me.versionMismatch["seat-a"])
+
+	assert.Contains(t, result.VastXML, `<VAST version="4.0">`)
+	assert.Contains(t, result.VastXML, "<Advertiser>b.com</Advertiser>")
+	assert.Contains(t, result.VastXML, "<Advertiser>c.com</Advertiser>")
+	assert.NotContains(t, result.VastXML, "<Advertiser>a.com</Advertiser>")
+}
+
+func TestCollateVAST_VersionTieBrokenLexicographically(t *testing.T) {
+	validAd := func(version, advertiser string) string {
+		return fmt.Sprintf(`<VAST version="%s"><Ad><InLine>`+
+			`<Advertiser>%s</Advertiser>`+
+			`<Pricing model="CPM" currency="USD">5.00</Pricing>`+
+			`<Creatives></Creatives></InLine></Ad></VAST>`, version, advertiser)
+	}
+
+	bids := []VastBidInput{
+		{BidID: "v4-1", ImpID: "imp-1", AdapterName: "seat-a", AdM: validAd("4.0", "a.com")},
+		{BidID: "v3-1", ImpID: "imp-2", AdapterName: "seat-b", AdM: validAd("3.0", "b.com")},
+	}
+
+	me := newCollateMetricsMock()
+	result := CollateVAST(bids, me)
+
+	assert.Contains(t, result.VastXML, `<VAST version="3.0">`)
+	assert.Contains(t, result.VastXML, "<Advertiser>b.com</Advertiser>")
+	assert.NotContains(t, result.VastXML, "<Advertiser>a.com</Advertiser>")
+	assert.Equal(t, 1, me.versionMismatch["seat-a"])
 }
 
 func TestCollateVAST_WrapperWithMetadata(t *testing.T) {

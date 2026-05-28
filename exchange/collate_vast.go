@@ -16,6 +16,7 @@ type VastBidInput struct {
 	ADomain     []string
 	Cat         []string
 	AdM         string
+	BidExp      int64
 	AdapterName openrtb_ext.BidderName
 }
 
@@ -29,9 +30,14 @@ func CollateVAST(bids []VastBidInput, me metrics.MetricsEngine) CollatedVastOutp
 		return CollatedVastOutput{}
 	}
 
-	var surviving []*etree.Element
+	type parsedBid struct {
+		input   VastBidInput
+		vast    *etree.Element
+		version string
+	}
+
+	var parsed []parsedBid
 	var errs []error
-	targetVersion := ""
 
 	for _, bid := range bids {
 		if bid.AdM == "" {
@@ -52,27 +58,48 @@ func CollateVAST(bids []VastBidInput, me metrics.MetricsEngine) CollatedVastOutp
 		}
 
 		version := vast.SelectAttrValue("version", "")
-		if targetVersion == "" {
-			targetVersion = version
-		} else if version != targetVersion {
-			me.RecordCollateVastVersionMismatch(bid.AdapterName)
-			errs = append(errs, fmt.Errorf("bid %q (imp %q): VAST version %q does not match target %q, discarding", bid.BidID, bid.ImpID, version, targetVersion))
+		parsed = append(parsed, parsedBid{input: bid, vast: vast, version: version})
+	}
+
+	if len(parsed) == 0 {
+		return CollatedVastOutput{Errors: errs}
+	}
+
+	// Pick the version with the most bids; ties broken lexicographically.
+	versionCounts := make(map[string]int)
+	for _, p := range parsed {
+		versionCounts[p.version]++
+	}
+	targetVersion := ""
+	targetCount := 0
+	for v, count := range versionCounts {
+		if count > targetCount || (count == targetCount && (targetVersion == "" || v < targetVersion)) {
+			targetVersion = v
+			targetCount = count
+		}
+	}
+
+	var surviving []*etree.Element
+	for _, p := range parsed {
+		if p.version != targetVersion {
+			me.RecordCollateVastVersionMismatch(p.input.AdapterName)
+			errs = append(errs, fmt.Errorf("bid %q (imp %q): VAST version %q does not match target %q, discarding", p.input.BidID, p.input.ImpID, p.version, targetVersion))
 			continue
 		}
 
-		for _, ad := range vast.SelectElements("Ad") {
+		for _, ad := range p.vast.SelectElements("Ad") {
 			child := ad.SelectElement("InLine")
 			if child == nil {
 				child = ad.SelectElement("Wrapper")
 			}
 			if child == nil {
-				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> has neither InLine nor Wrapper, skipping", bid.BidID, bid.ImpID))
+				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> has neither InLine nor Wrapper, skipping", p.input.BidID, p.input.ImpID))
 				continue
 			}
 
 			if child.SelectElement("Advertiser") == nil || child.SelectElement("Pricing") == nil {
-				me.RecordCollateVastMissingMetadata(bid.AdapterName)
-				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> missing required Advertiser or Pricing metadata, discarding", bid.BidID, bid.ImpID))
+				me.RecordCollateVastMissingMetadata(p.input.AdapterName)
+				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> missing required Advertiser or Pricing metadata, discarding", p.input.BidID, p.input.ImpID))
 				continue
 			}
 

@@ -2543,42 +2543,41 @@ func TestRequestExtUseOpenAdsExtKey(t *testing.T) {
 }
 
 func TestRequestExtOpenAdsFields(t *testing.T) {
-	t.Run("collate_vast true under ext.openads", func(t *testing.T) {
+	t.Run("collatevast under ext.openads.cache", func(t *testing.T) {
 		re := &RequestExt{}
-		err := re.unmarshal([]byte(`{"openads":{"collate_vast":true}}`))
+		err := re.unmarshal([]byte(`{"openads":{"cache":{"collatevast":{}}}}`))
 		assert.NoError(t, err)
 		prebid := re.GetPrebid()
-		assert.NotNil(t, prebid.CollateVast)
-		assert.True(t, *prebid.CollateVast)
+		assert.NotNil(t, prebid.Cache)
+		assert.NotNil(t, prebid.Cache.CollateVast)
 	})
 
-	t.Run("return_bids false under ext.openads", func(t *testing.T) {
+	t.Run("collatevast with returnbids false", func(t *testing.T) {
 		re := &RequestExt{}
-		err := re.unmarshal([]byte(`{"openads":{"return_bids":false}}`))
+		err := re.unmarshal([]byte(`{"openads":{"cache":{"collatevast":{"returnbids":false}}}}`))
 		assert.NoError(t, err)
 		prebid := re.GetPrebid()
-		assert.NotNil(t, prebid.ReturnBids)
-		assert.False(t, *prebid.ReturnBids)
+		assert.NotNil(t, prebid.Cache.CollateVast)
+		assert.NotNil(t, prebid.Cache.CollateVast.ReturnBids)
+		assert.False(t, *prebid.Cache.CollateVast.ReturnBids)
 	})
 
-	t.Run("absent fields use defaults", func(t *testing.T) {
+	t.Run("absent cache returns nil", func(t *testing.T) {
 		re := &RequestExt{}
 		err := re.unmarshal([]byte(`{"openads":{"debug":true}}`))
 		assert.NoError(t, err)
 		prebid := re.GetPrebid()
-		assert.Nil(t, prebid.CollateVast, "collate_vast should be nil when absent")
-		assert.Nil(t, prebid.ReturnBids, "return_bids should be nil when absent")
+		assert.Nil(t, prebid.Cache, "cache should be nil when absent")
 	})
 
 	t.Run("fields under ext.prebid also work", func(t *testing.T) {
 		re := &RequestExt{}
-		err := re.unmarshal([]byte(`{"prebid":{"collate_vast":true,"return_bids":false}}`))
+		err := re.unmarshal([]byte(`{"prebid":{"cache":{"collatevast":{"returnbids":false}}}}`))
 		assert.NoError(t, err)
 		prebid := re.GetPrebid()
-		assert.NotNil(t, prebid.CollateVast)
-		assert.True(t, *prebid.CollateVast)
-		assert.NotNil(t, prebid.ReturnBids)
-		assert.False(t, *prebid.ReturnBids)
+		assert.NotNil(t, prebid.Cache.CollateVast)
+		assert.NotNil(t, prebid.Cache.CollateVast.ReturnBids)
+		assert.False(t, *prebid.Cache.CollateVast.ReturnBids)
 	})
 
 	t.Run("empty ext returns nil prebid", func(t *testing.T) {
@@ -2589,13 +2588,13 @@ func TestRequestExtOpenAdsFields(t *testing.T) {
 		assert.Nil(t, prebid)
 	})
 
-	t.Run("both keys present, openads fields win", func(t *testing.T) {
+	t.Run("both keys present, openads wins", func(t *testing.T) {
 		re := &RequestExt{}
-		err := re.unmarshal([]byte(`{"prebid":{"collate_vast":false},"openads":{"collate_vast":true}}`))
+		err := re.unmarshal([]byte(`{"prebid":{"cache":{"collatevast":{"returnbids":true}}},"openads":{"cache":{"collatevast":{"returnbids":false}}}}`))
 		assert.NoError(t, err)
 		prebid := re.GetPrebid()
-		assert.NotNil(t, prebid.CollateVast)
-		assert.True(t, *prebid.CollateVast, "openads key should take precedence")
+		assert.NotNil(t, prebid.Cache.CollateVast.ReturnBids)
+		assert.False(t, *prebid.Cache.CollateVast.ReturnBids, "openads key should take precedence")
 	})
 }
 

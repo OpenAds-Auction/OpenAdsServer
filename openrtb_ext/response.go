@@ -40,20 +40,25 @@ type ExtResponseSyncData struct {
 	Syncs []*ExtUserSync `json:"syncs"`
 }
 
-// ExtResponseOpenAdsCache represents a cached collated VAST document.
-type ExtResponseOpenAdsCache struct {
+// ExtResponseCollateVastCache represents a cached collated VAST document.
+type ExtResponseCollateVastCache struct {
 	Key string `json:"key"`
 	URL string `json:"url"`
 }
 
+// ExtResponsePrebidCache defines the contract for bidresponse.ext.prebid.cache
+type ExtResponsePrebidCache struct {
+	CollateVast *ExtResponseCollateVastCache `json:"collatevast,omitempty"`
+}
+
 // ExtResponsePrebid defines the contract for bidresponse.ext.prebid
 type ExtResponsePrebid struct {
-	AuctionTimestamp int64             `json:"auctiontimestamp,omitempty"`
-	Passthrough      json.RawMessage   `json:"passthrough,omitempty"`
-	Modules          json.RawMessage   `json:"modules,omitempty"`
-	Fledge           *Fledge           `json:"fledge,omitempty"`
-	Targeting        map[string]string `json:"targeting,omitempty"`
-	OpenAdsCache     *ExtResponseOpenAdsCache `json:"openadscache,omitempty"`
+	AuctionTimestamp int64                   `json:"auctiontimestamp,omitempty"`
+	Passthrough      json.RawMessage         `json:"passthrough,omitempty"`
+	Modules          json.RawMessage         `json:"modules,omitempty"`
+	Fledge           *Fledge                 `json:"fledge,omitempty"`
+	Targeting        map[string]string       `json:"targeting,omitempty"`
+	Cache            *ExtResponsePrebidCache `json:"cache,omitempty"`
 	// SeatNonBid holds the array of Bids which are either rejected, no bids inside bidresponse.ext.prebid.seatnonbid
 	SeatNonBid []SeatNonBid `json:"seatnonbid,omitempty"`
 }
