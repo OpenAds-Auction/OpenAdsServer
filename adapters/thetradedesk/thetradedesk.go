@@ -176,8 +176,6 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 
 	for _, seatBid := range bidResponse.SeatBid {
 		for _, bid := range seatBid.Bid {
-			bid := bid
-
 			resolveAuctionPriceMacros(&bid)
 			bidType, err := getBidType(bid.MType)
 
@@ -188,6 +186,7 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 			b := &adapters.TypedBid{
 				Bid:     &bid,
 				BidType: bidType,
+				// Seat:    openrtb_ext.BidderName(seatBid.Seat),
 			}
 			bidderResponse.Bids = append(bidderResponse.Bids, b)
 		}
