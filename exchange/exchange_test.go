@@ -6067,7 +6067,7 @@ func TestNilAuctionRequest(t *testing.T) {
 }
 
 func TestCollateVastIntegration(t *testing.T) {
-	sampleVAST := `<?xml version="1.0" encoding="UTF-8"?><VAST version="3.0"><Ad id="ad-1"><InLine><AdSystem>test</AdSystem><AdTitle>Test Ad</AdTitle><Advertiser>advertiser-one.com</Advertiser><Pricing model="CPM" currency="USD">12.50</Pricing><Creatives></Creatives></InLine></Ad></VAST>`
+	sampleVAST := `<?xml version="1.0" encoding="UTF-8"?><VAST version="3.0"><Ad id="ad-1"><InLine><AdSystem>test</AdSystem><AdTitle>Test Ad</AdTitle><Advertiser>advertiser-one.com</Advertiser><Pricing model="CPM" currency="USD">12.50</Pricing><Category authority="iab">IAB1</Category><Creatives></Creatives></InLine></Ad></VAST>`
 
 	noBidServer := func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }
 	server := httptest.NewServer(http.HandlerFunc(noBidServer))
