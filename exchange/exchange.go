@@ -30,6 +30,7 @@ import (
 	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/macros"
 	"github.com/prebid/prebid-server/v3/metrics"
+	"github.com/prebid/prebid-server/v3/modules/openads/vast/collate"
 	"github.com/prebid/prebid-server/v3/openrtb_ext"
 	"github.com/prebid/prebid-server/v3/ortb"
 	"github.com/prebid/prebid-server/v3/prebid_cache_client"
@@ -262,6 +263,17 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 	}
 
 	cacheInstructions := getExtCacheInstructions(requestExtPrebid)
+	collateVast := requestExtPrebid.Cache != nil && requestExtPrebid.Cache.CollateVast != nil
+	collateReturnBids := !collateVast || requestExtPrebid.Cache.CollateVast.ReturnBids == nil || *requestExtPrebid.Cache.CollateVast.ReturnBids
+	if collateVast && !collateReturnBids {
+		cacheInstructions.cacheBids = false
+		cacheInstructions.cacheVAST = false
+	}
+
+	if collateVast {
+		requestExtPrebid = ensureMultiBidForCollateVast(requestExtPrebid, r.BidRequestWrapper.BidRequest)
+		requestExt.SetPrebid(requestExtPrebid)
+	}
 
 	targData, warning := getExtTargetData(requestExtPrebid, cacheInstructions, r.Account)
 	if targData != nil {
@@ -537,6 +549,92 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 	// Build the response
 	bidResponse := e.buildBidResponse(ctx, liveAdapters, adapterBids, r.BidRequestWrapper, adapterExtra, auc, bidResponseExt, cacheInstructions.returnCreative, r.ImpExtInfoMap, r.PubID, errs, &seatNonBidBuilder)
 	bidResponse = adservertargeting.Apply(r.BidRequestWrapper, r.ResolvedBidRequest, bidResponse, r.QueryParams, bidResponseExt, r.Account.TruncateTargetAttribute)
+
+	if collateVast {
+		if anyBidsReturned {
+			var vastInputs []collate.BidInput
+			for bidderName, seatBid := range adapterBids {
+				if seatBid == nil {
+					continue
+				}
+				for _, pbsBid := range seatBid.Bids {
+					if pbsBid.BidType != openrtb_ext.BidTypeVideo {
+						continue
+					}
+					bid := pbsBid.Bid
+					if bid.AdM == "" {
+						continue
+					}
+					vastInputs = append(vastInputs, collate.BidInput{
+						BidID:       bid.ID,
+						ImpID:       bid.ImpID,
+						Seat:        bidderName.String(),
+						Price:       bid.Price,
+						ADomain:     bid.ADomain,
+						Cat:         bid.Cat,
+						AdM:         bid.AdM,
+						BidExp:      bid.Exp,
+						AdapterName: bidderName,
+					})
+				}
+			}
+
+			if len(vastInputs) > 0 {
+				collated := collate.VAST(vastInputs, e.me)
+				if collated.VastXML != "" {
+					expByImp := make(map[string]int64)
+					for _, imp := range r.BidRequestWrapper.BidRequest.Imp {
+						expByImp[imp.ID] = imp.Exp
+					}
+					videoDefTTL := defTTL(openrtb_ext.BidTypeVideo, &r.Account.CacheTTL)
+					var minTTL int64
+					for _, input := range vastInputs {
+						bidTTL := cacheTTL(expByImp[input.ImpID], input.BidExp, videoDefTTL, 60)
+						if bidTTL > 0 && (minTTL == 0 || bidTTL < minTTL) {
+							minTTL = bidTTL
+						}
+					}
+
+					if vastBytes, marshalErr := jsonutil.Marshal(collated.VastXML); marshalErr == nil {
+						uuids, cacheErrs := e.cache.PutJson(ctx, []prebid_cache_client.Cacheable{{
+							Type:       prebid_cache_client.TypeXML,
+							Data:       vastBytes,
+							TTLSeconds: minTTL,
+						}})
+						if len(cacheErrs) > 0 {
+							for _, ce := range cacheErrs {
+								bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral] = append(
+									bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral],
+									openrtb_ext.ExtBidderMessage{Message: "collate_vast cache: " + ce.Error()},
+								)
+							}
+						}
+						if len(uuids) > 0 && uuids[0] != "" {
+							if bidResponseExt.Prebid == nil {
+								bidResponseExt.Prebid = &openrtb_ext.ExtResponsePrebid{}
+							}
+							bidResponseExt.Prebid.Cache = &openrtb_ext.ExtResponsePrebidCache{
+								CollateVast: &openrtb_ext.ExtResponseCollateVastCache{
+									Key: uuids[0],
+									URL: buildCacheURL(e.cache, uuids[0]),
+								},
+							}
+						}
+					}
+				}
+				for _, collErr := range collated.Errors {
+					bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral] = append(
+						bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral],
+						openrtb_ext.ExtBidderMessage{Message: "collate_vast: " + collErr.Error()},
+					)
+				}
+			}
+		}
+
+		if !collateReturnBids {
+			bidResponse.SeatBid = nil
+		}
+	}
 
 	bidResponse.Ext, err = encodeBidResponseExt(bidResponseExt)
 	if err != nil {
@@ -1642,4 +1740,53 @@ func setSeatNonBid(bidResponseExt *openrtb_ext.ExtBidResponse, seatNonBidBuilder
 
 	bidResponseExt.Prebid.SeatNonBid = seatNonBidBuilder.Slice()
 	return bidResponseExt
+}
+
+func ensureMultiBidForCollateVast(prebid *openrtb_ext.ExtRequestPrebid, req *openrtb2.BidRequest) *openrtb_ext.ExtRequestPrebid {
+	const defaultMaxBids = 20
+
+	existing := make(map[string]bool)
+	for _, mb := range prebid.MultiBid {
+		if mb.Bidder != "" {
+			existing[mb.Bidder] = true
+		}
+		for _, b := range mb.Bidders {
+			existing[b] = true
+		}
+	}
+
+	for _, imp := range req.Imp {
+		var impExt map[string]map[string]json.RawMessage
+		if err := jsonutil.Unmarshal(imp.Ext, &impExt); err != nil {
+			continue
+		}
+		bidderBlock := impExt["prebid"]
+		if bidderBlock == nil {
+			bidderBlock = impExt["openads"]
+		}
+		if bidderBlock == nil {
+			continue
+		}
+		bidders, ok := bidderBlock["bidder"]
+		if !ok {
+			continue
+		}
+		var bidderMap map[string]json.RawMessage
+		if err := jsonutil.Unmarshal(bidders, &bidderMap); err != nil {
+			continue
+		}
+		for bidder := range bidderMap {
+			if existing[bidder] {
+				continue
+			}
+			maxBids := defaultMaxBids
+			prebid.MultiBid = append(prebid.MultiBid, &openrtb_ext.ExtMultiBid{
+				Bidder:  bidder,
+				MaxBids: &maxBids,
+			})
+			existing[bidder] = true
+		}
+	}
+
+	return prebid
 }

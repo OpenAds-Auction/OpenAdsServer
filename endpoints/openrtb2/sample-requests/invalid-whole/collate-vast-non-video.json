@@ -1,0 +1,36 @@
+{
+    "description": "collate_vast enabled with non-video impression",
+    "mockBidRequest": {
+        "id": "some-request-id",
+        "site": {
+            "page": "test.somepage.com"
+        },
+        "imp": [
+            {
+                "id": "banner-imp",
+                "banner": {
+                    "w": 300,
+                    "h": 250
+                },
+                "ext": {
+                    "prebid": {
+                        "bidder": {
+                            "appnexus": {
+                                "placementId": 12883451
+                            }
+                        }
+                    }
+                }
+            }
+        ],
+        "ext": {
+            "openads": {
+                "cache": {
+                    "collatevast": {}
+                }
+            }
+        }
+    },
+    "expectedErrorMessage": "Invalid request: request.imp[0] must have a video object when collatevast is enabled",
+    "expectedReturnCode": 400
+}
