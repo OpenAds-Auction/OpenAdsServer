@@ -1,0 +1,56 @@
+{
+    "description": "collate_vast enabled with multiple impressions",
+    "mockBidRequest": {
+        "id": "some-request-id",
+        "site": {
+            "page": "test.somepage.com"
+        },
+        "imp": [
+            {
+                "id": "video-imp-1",
+                "video": {
+                    "mimes": ["video/mp4"],
+                    "protocols": [1, 2],
+                    "w": 640,
+                    "h": 480
+                },
+                "ext": {
+                    "prebid": {
+                        "bidder": {
+                            "appnexus": {
+                                "placementId": 12883451
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "id": "video-imp-2",
+                "video": {
+                    "mimes": ["video/mp4"],
+                    "protocols": [1, 2],
+                    "w": 640,
+                    "h": 480
+                },
+                "ext": {
+                    "prebid": {
+                        "bidder": {
+                            "appnexus": {
+                                "placementId": 12883451
+                            }
+                        }
+                    }
+                }
+            }
+        ],
+        "ext": {
+            "openads": {
+                "cache": {
+                    "collatevast": {}
+                }
+            }
+        }
+    },
+    "expectedErrorMessage": "Invalid request: request must contain exactly one impression when collatevast is enabled, got 2",
+    "expectedReturnCode": 400
+}
