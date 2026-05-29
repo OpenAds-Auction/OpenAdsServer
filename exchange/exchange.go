@@ -30,6 +30,7 @@ import (
 	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/macros"
 	"github.com/prebid/prebid-server/v3/metrics"
+	"github.com/prebid/prebid-server/v3/modules/openads/vast/collate"
 	"github.com/prebid/prebid-server/v3/openrtb_ext"
 	"github.com/prebid/prebid-server/v3/ortb"
 	"github.com/prebid/prebid-server/v3/prebid_cache_client"
@@ -267,6 +268,11 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 	if collateVast && !collateReturnBids {
 		cacheInstructions.cacheBids = false
 		cacheInstructions.cacheVAST = false
+	}
+
+	if collateVast {
+		requestExtPrebid = ensureMultiBidForCollateVast(requestExtPrebid, r.BidRequestWrapper.BidRequest)
+		requestExt.SetPrebid(requestExtPrebid)
 	}
 
 	targData, warning := getExtTargetData(requestExtPrebid, cacheInstructions, r.Account)
@@ -546,7 +552,7 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 
 	if collateVast {
 		if anyBidsReturned {
-			var vastInputs []VastBidInput
+			var vastInputs []collate.BidInput
 			for bidderName, seatBid := range adapterBids {
 				if seatBid == nil {
 					continue
@@ -559,7 +565,7 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 					if bid.AdM == "" {
 						continue
 					}
-					vastInputs = append(vastInputs, VastBidInput{
+					vastInputs = append(vastInputs, collate.BidInput{
 						BidID:       bid.ID,
 						ImpID:       bid.ImpID,
 						Seat:        bidderName.String(),
@@ -574,7 +580,7 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 			}
 
 			if len(vastInputs) > 0 {
-				collated := CollateVAST(vastInputs, e.me)
+				collated := collate.VAST(vastInputs, e.me)
 				if collated.VastXML != "" {
 					expByImp := make(map[string]int64)
 					for _, imp := range r.BidRequestWrapper.BidRequest.Imp {
@@ -1734,4 +1740,53 @@ func setSeatNonBid(bidResponseExt *openrtb_ext.ExtBidResponse, seatNonBidBuilder
 
 	bidResponseExt.Prebid.SeatNonBid = seatNonBidBuilder.Slice()
 	return bidResponseExt
+}
+
+func ensureMultiBidForCollateVast(prebid *openrtb_ext.ExtRequestPrebid, req *openrtb2.BidRequest) *openrtb_ext.ExtRequestPrebid {
+	const defaultMaxBids = 20
+
+	existing := make(map[string]bool)
+	for _, mb := range prebid.MultiBid {
+		if mb.Bidder != "" {
+			existing[mb.Bidder] = true
+		}
+		for _, b := range mb.Bidders {
+			existing[b] = true
+		}
+	}
+
+	for _, imp := range req.Imp {
+		var impExt map[string]map[string]json.RawMessage
+		if err := jsonutil.Unmarshal(imp.Ext, &impExt); err != nil {
+			continue
+		}
+		bidderBlock := impExt["prebid"]
+		if bidderBlock == nil {
+			bidderBlock = impExt["openads"]
+		}
+		if bidderBlock == nil {
+			continue
+		}
+		bidders, ok := bidderBlock["bidder"]
+		if !ok {
+			continue
+		}
+		var bidderMap map[string]json.RawMessage
+		if err := jsonutil.Unmarshal(bidders, &bidderMap); err != nil {
+			continue
+		}
+		for bidder := range bidderMap {
+			if existing[bidder] {
+				continue
+			}
+			maxBids := defaultMaxBids
+			prebid.MultiBid = append(prebid.MultiBid, &openrtb_ext.ExtMultiBid{
+				Bidder:  bidder,
+				MaxBids: &maxBids,
+			})
+			existing[bidder] = true
+		}
+	}
+
+	return prebid
 }
