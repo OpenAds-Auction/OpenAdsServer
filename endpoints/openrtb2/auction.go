@@ -861,6 +861,9 @@ func (deps *endpointDeps) validateRequest(account *config.Account, httpReq *http
 	}
 
 	if reqPrebid != nil && reqPrebid.Cache != nil && reqPrebid.Cache.CollateVast != nil {
+		if len(req.GetImp()) > 1 {
+			return []error{fmt.Errorf("request must contain exactly one impression when collatevast is enabled, got %d", len(req.GetImp()))}
+		}
 		for i, imp := range req.GetImp() {
 			if imp.Video == nil {
 				return []error{fmt.Errorf("request.imp[%d] must have a video object when collatevast is enabled", i)}

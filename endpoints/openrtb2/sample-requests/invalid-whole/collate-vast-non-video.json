@@ -7,24 +7,6 @@
         },
         "imp": [
             {
-                "id": "video-imp",
-                "video": {
-                    "mimes": ["video/mp4"],
-                    "protocols": [1, 2],
-                    "w": 640,
-                    "h": 480
-                },
-                "ext": {
-                    "prebid": {
-                        "bidder": {
-                            "appnexus": {
-                                "placementId": 12883451
-                            }
-                        }
-                    }
-                }
-            },
-            {
                 "id": "banner-imp",
                 "banner": {
                     "w": 300,
@@ -49,6 +31,6 @@
             }
         }
     },
-    "expectedErrorMessage": "Invalid request: request.imp[1] must have a video object when collatevast is enabled",
+    "expectedErrorMessage": "Invalid request: request.imp[0] must have a video object when collatevast is enabled",
     "expectedReturnCode": 400
 }
