@@ -1,4 +1,4 @@
-package exchange
+package collate
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/prebid/prebid-server/v3/openrtb_ext"
 )
 
-type VastBidInput struct {
+type BidInput struct {
 	BidID       string
 	ImpID       string
 	Seat        string
@@ -20,18 +20,18 @@ type VastBidInput struct {
 	AdapterName openrtb_ext.BidderName
 }
 
-type CollatedVastOutput struct {
+type Result struct {
 	VastXML string
 	Errors  []error
 }
 
-func CollateVAST(bids []VastBidInput, me metrics.MetricsEngine) CollatedVastOutput {
+func VAST(bids []BidInput, me metrics.MetricsEngine) Result {
 	if len(bids) == 0 {
-		return CollatedVastOutput{}
+		return Result{}
 	}
 
 	type parsedBid struct {
-		input   VastBidInput
+		input   BidInput
 		vast    *etree.Element
 		version string
 	}
@@ -62,20 +62,14 @@ func CollateVAST(bids []VastBidInput, me metrics.MetricsEngine) CollatedVastOutp
 	}
 
 	if len(parsed) == 0 {
-		return CollatedVastOutput{Errors: errs}
+		return Result{Errors: errs}
 	}
 
-	// Pick the version with the most bids; ties broken lexicographically.
-	versionCounts := make(map[string]int)
-	for _, p := range parsed {
-		versionCounts[p.version]++
-	}
-	targetVersion := ""
-	targetCount := 0
-	for v, count := range versionCounts {
-		if count > targetCount || (count == targetCount && (targetVersion == "" || v < targetVersion)) {
-			targetVersion = v
-			targetCount = count
+	// Pick the highest version string across all parsed bids.
+	targetVersion := parsed[0].version
+	for _, p := range parsed[1:] {
+		if p.version > targetVersion {
+			targetVersion = p.version
 		}
 	}
 
@@ -97,9 +91,9 @@ func CollateVAST(bids []VastBidInput, me metrics.MetricsEngine) CollatedVastOutp
 				continue
 			}
 
-			if child.SelectElement("Advertiser") == nil || child.SelectElement("Pricing") == nil {
+			if child.SelectElement("Advertiser") == nil || child.SelectElement("Pricing") == nil || child.SelectElement("Category") == nil {
 				me.RecordCollateVastMissingMetadata(p.input.AdapterName)
-				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> missing required Advertiser or Pricing metadata, discarding", p.input.BidID, p.input.ImpID))
+				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> missing required Advertiser, Pricing, or Category metadata, discarding", p.input.BidID, p.input.ImpID))
 				continue
 			}
 
@@ -108,7 +102,7 @@ func CollateVAST(bids []VastBidInput, me metrics.MetricsEngine) CollatedVastOutp
 	}
 
 	if len(surviving) == 0 {
-		return CollatedVastOutput{Errors: errs}
+		return Result{Errors: errs}
 	}
 
 	outDoc := etree.NewDocument()
@@ -121,10 +115,10 @@ func CollateVAST(bids []VastBidInput, me metrics.MetricsEngine) CollatedVastOutp
 	xml, err := outDoc.WriteToString()
 	if err != nil {
 		errs = append(errs, fmt.Errorf("failed to serialize collated VAST: %w", err))
-		return CollatedVastOutput{Errors: errs}
+		return Result{Errors: errs}
 	}
 
-	return CollatedVastOutput{
+	return Result{
 		VastXML: xml,
 		Errors:  errs,
 	}
