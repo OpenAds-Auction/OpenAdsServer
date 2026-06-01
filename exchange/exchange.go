@@ -266,7 +266,7 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 
 	cacheInstructions := getExtCacheInstructions(requestExtPrebid)
 	collatedVast := requestExtPrebid.Cache != nil && requestExtPrebid.Cache.CollatedVast != nil
-	collateReturnBids := !collatedVast || requestExtPrebid.Cache.CollatedVast.ReturnBids == nil || *requestExtPrebid.Cache.CollatedVast.ReturnBids
+	collateReturnBids := !collatedVast || (requestExtPrebid.Cache.CollatedVast.ReturnBids != nil && *requestExtPrebid.Cache.CollatedVast.ReturnBids)
 	if collatedVast && !collateReturnBids {
 		cacheInstructions.cacheBids = false
 		cacheInstructions.cacheVAST = false

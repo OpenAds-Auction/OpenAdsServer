@@ -6145,7 +6145,7 @@ func TestCollatedVastIntegration(t *testing.T) {
 			return
 		}
 
-		assert.NotEmpty(t, outBidResponse.SeatBid, "seatbid should be present when return_bids defaults to true")
+		assert.Nil(t, outBidResponse.SeatBid, "seatbid should be nil when return_bids defaults to false")
 
 		var extResp openrtb_ext.ExtBidResponse
 		if !assert.NoError(t, jsonutil.UnmarshalValid(outBidResponse.Ext, &extResp)) {
@@ -6164,16 +6164,16 @@ func TestCollatedVastIntegration(t *testing.T) {
 		assert.Contains(t, extResp.Prebid.Cache.CollatedVast.URL, extResp.Prebid.Cache.CollatedVast.Key, "cache URL should contain the key")
 	})
 
-	t.Run("return_bids false strips seatbid but keeps cache", func(t *testing.T) {
+	t.Run("return_bids true preserves seatbid", func(t *testing.T) {
 		bidRequest := &openrtb2.BidRequest{
-			ID: "return-bids-false-test",
+			ID: "return-bids-true-test",
 			Imp: []openrtb2.Imp{{
 				ID:    "video-imp-1",
 				Video: &openrtb2.Video{MIMEs: []string{"video/mp4"}, W: ptrutil.ToPtr[int64](640), H: ptrutil.ToPtr[int64](480)},
 				Ext:   json.RawMessage(`{"prebid":{"bidder":{"appnexus":{"placementId":1}}}}`),
 			}},
 			Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-			Ext:  json.RawMessage(`{"openads":{"cache":{"collatedvast":{"returnbids":false}}}}`),
+			Ext:  json.RawMessage(`{"openads":{"cache":{"collatedvast":{"returnbids":true}}}}`),
 		}
 
 		auctionRequest := &AuctionRequest{
@@ -6189,7 +6189,7 @@ func TestCollatedVastIntegration(t *testing.T) {
 			return
 		}
 
-		assert.Nil(t, outBidResponse.SeatBid, "seatbid should be nil when return_bids is false")
+		assert.NotEmpty(t, outBidResponse.SeatBid, "seatbid should be present when return_bids is true")
 
 		var extResp openrtb_ext.ExtBidResponse
 		if !assert.NoError(t, jsonutil.UnmarshalValid(outBidResponse.Ext, &extResp)) {
@@ -6198,10 +6198,10 @@ func TestCollatedVastIntegration(t *testing.T) {
 		if !assert.NotNil(t, extResp.Prebid, "ext.prebid should exist") {
 			return
 		}
-		if !assert.NotNil(t, extResp.Prebid.Cache, "ext.openads.cache should exist even when returnbids is false") {
+		if !assert.NotNil(t, extResp.Prebid.Cache, "ext.openads.cache should exist when returnbids is true") {
 			return
 		}
-		if !assert.NotNil(t, extResp.Prebid.Cache.CollatedVast, "ext.openads.cache.collatedvast should exist even when returnbids is false") {
+		if !assert.NotNil(t, extResp.Prebid.Cache.CollatedVast, "ext.openads.cache.collatedvast should exist when returnbids is true") {
 			return
 		}
 		assert.NotEmpty(t, extResp.Prebid.Cache.CollatedVast.Key)
