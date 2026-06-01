@@ -40,15 +40,15 @@ type ExtResponseSyncData struct {
 	Syncs []*ExtUserSync `json:"syncs"`
 }
 
-// ExtResponseCollateVastCache represents a cached collated VAST document.
-type ExtResponseCollateVastCache struct {
+// ExtResponseCollatedVastCache represents a cached collated VAST document.
+type ExtResponseCollatedVastCache struct {
 	Key string `json:"key"`
 	URL string `json:"url"`
 }
 
 // ExtResponsePrebidCache defines the contract for bidresponse.ext.prebid.cache
 type ExtResponsePrebidCache struct {
-	CollateVast *ExtResponseCollateVastCache `json:"collatevast,omitempty"`
+	CollatedVast *ExtResponseCollatedVastCache `json:"collatedvast,omitempty"`
 }
 
 // ExtResponsePrebid defines the contract for bidresponse.ext.prebid

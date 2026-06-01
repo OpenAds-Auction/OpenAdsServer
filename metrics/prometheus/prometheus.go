@@ -81,8 +81,8 @@ type Metrics struct {
 	adapterThrottled                      *prometheus.CounterVec
 	adapterConnectionDialErrors           *prometheus.CounterVec
 	adapterConnectionDialTime             *prometheus.HistogramVec
-	collateVastVersionMismatch            *prometheus.CounterVec
-	collateVastMissingMetadata            *prometheus.CounterVec
+	collatedVastVersionMismatch           *prometheus.CounterVec
+	collatedVastMissingMetadata           *prometheus.CounterVec
 
 	// Syncer Metrics
 	syncerRequests *prometheus.CounterVec
@@ -448,13 +448,13 @@ func NewMetrics(cfg config.PrometheusMetrics, disabledMetrics config.DisabledMet
 		}
 	}
 
-	metrics.collateVastVersionMismatch = newCounter(cfg, reg,
-		"collate_vast_version_mismatch",
+	metrics.collatedVastVersionMismatch = newCounter(cfg, reg,
+		"collated_vast_version_mismatch",
 		"Count of VAST ads discarded during collation due to version mismatch, labeled by adapter.",
 		[]string{adapterLabel})
 
-	metrics.collateVastMissingMetadata = newCounter(cfg, reg,
-		"collate_vast_missing_metadata",
+	metrics.collatedVastMissingMetadata = newCounter(cfg, reg,
+		"collated_vast_missing_metadata",
 		"Count of VAST ads discarded during collation due to missing Advertiser or Pricing metadata, labeled by adapter.",
 		[]string{adapterLabel})
 
@@ -1230,14 +1230,14 @@ func (m *Metrics) RecordAdapterConnectionDialTime(adapterName openrtb_ext.Bidder
 	}).Observe(dialStartTime.Seconds())
 }
 
-func (m *Metrics) RecordCollateVastVersionMismatch(adapterName openrtb_ext.BidderName) {
-	m.collateVastVersionMismatch.With(prometheus.Labels{
+func (m *Metrics) RecordCollatedVastVersionMismatch(adapterName openrtb_ext.BidderName) {
+	m.collatedVastVersionMismatch.With(prometheus.Labels{
 		adapterLabel: strings.ToLower(string(adapterName)),
 	}).Inc()
 }
 
-func (m *Metrics) RecordCollateVastMissingMetadata(adapterName openrtb_ext.BidderName) {
-	m.collateVastMissingMetadata.With(prometheus.Labels{
+func (m *Metrics) RecordCollatedVastMissingMetadata(adapterName openrtb_ext.BidderName) {
+	m.collatedVastMissingMetadata.With(prometheus.Labels{
 		adapterLabel: strings.ToLower(string(adapterName)),
 	}).Inc()
 }

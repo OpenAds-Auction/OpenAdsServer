@@ -593,6 +593,6 @@ type MetricsEngine interface {
 	RecordAuctionAuditActiveFilters(count int)
 	RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName)
 	RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration)
-	RecordCollateVastVersionMismatch(adapterName openrtb_ext.BidderName)
-	RecordCollateVastMissingMetadata(adapterName openrtb_ext.BidderName)
+	RecordCollatedVastVersionMismatch(adapterName openrtb_ext.BidderName)
+	RecordCollatedVastMissingMetadata(adapterName openrtb_ext.BidderName)
 }

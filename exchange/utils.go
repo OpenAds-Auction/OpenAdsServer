@@ -80,8 +80,8 @@ func (rs *requestSplitter) cleanOpenRTBRequests(ctx context.Context,
 		return
 	}
 
-	if requestExt != nil && requestExt.Prebid.Cache != nil && requestExt.Prebid.Cache.CollateVast != nil {
-		ensureCollateVastMultiBid(requestExt, impsByBidder)
+	if requestExt != nil && requestExt.Prebid.Cache != nil && requestExt.Prebid.Cache.CollatedVast != nil {
+		ensureCollatedVastMultiBid(requestExt, impsByBidder)
 	}
 
 	explicitBuyerUIDs, err := extractAndCleanBuyerUIDs(req)
@@ -1206,9 +1206,9 @@ func applyBidAdjustmentToFloor(req *openrtb_ext.RequestWrapper, bidder string, a
 	}
 }
 
-const collateVastDefaultMaxBids = 20
+const collatedVastDefaultMaxBids = 20
 
-func ensureCollateVastMultiBid(requestExt *openrtb_ext.ExtRequest, impsByBidder map[string][]openrtb2.Imp) {
+func ensureCollatedVastMultiBid(requestExt *openrtb_ext.ExtRequest, impsByBidder map[string][]openrtb2.Imp) {
 	existing := make(map[string]bool)
 	for _, mb := range requestExt.Prebid.MultiBid {
 		if mb.Bidder != "" {
@@ -1223,7 +1223,7 @@ func ensureCollateVastMultiBid(requestExt *openrtb_ext.ExtRequest, impsByBidder 
 		if existing[bidder] {
 			continue
 		}
-		maxBids := collateVastDefaultMaxBids
+		maxBids := collatedVastDefaultMaxBids
 		requestExt.Prebid.MultiBid = append(requestExt.Prebid.MultiBid, &openrtb_ext.ExtMultiBid{
 			Bidder:  bidder,
 			MaxBids: &maxBids,

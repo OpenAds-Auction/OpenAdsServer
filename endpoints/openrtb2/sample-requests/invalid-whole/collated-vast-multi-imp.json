@@ -1,5 +1,5 @@
 {
-    "description": "collate_vast enabled with multiple impressions",
+    "description": "collated_vast enabled with multiple impressions",
     "mockBidRequest": {
         "id": "some-request-id",
         "site": {
@@ -46,11 +46,11 @@
         "ext": {
             "openads": {
                 "cache": {
-                    "collatevast": {}
+                    "collatedvast": {}
                 }
             }
         }
     },
-    "expectedErrorMessage": "Invalid request: request must contain exactly one impression when collatevast is enabled, got 2",
+    "expectedErrorMessage": "Invalid request: request must contain exactly one impression when collatedvast is enabled, got 2",
     "expectedReturnCode": 400
 }

@@ -6066,7 +6066,7 @@ func TestNilAuctionRequest(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestCollateVastIntegration(t *testing.T) {
+func TestCollatedVastIntegration(t *testing.T) {
 	sampleVAST := `<?xml version="1.0" encoding="UTF-8"?><VAST version="3.0"><Ad id="ad-1"><InLine><AdSystem>test</AdSystem><AdTitle>Test Ad</AdTitle><Advertiser>advertiser-one.com</Advertiser><Pricing model="CPM" currency="USD">12.50</Pricing><Category authority="iab">IAB1</Category><Creatives></Creatives></InLine></Ad></VAST>`
 
 	noBidServer := func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }
@@ -6120,7 +6120,7 @@ func TestCollateVastIntegration(t *testing.T) {
 		gdprPermsBuilder: e.gdprPermsBuilder,
 	}
 
-	t.Run("collate_vast produces cache in response ext", func(t *testing.T) {
+	t.Run("collated_vast produces cache in response ext", func(t *testing.T) {
 		bidRequest := &openrtb2.BidRequest{
 			ID: "collate-test",
 			Imp: []openrtb2.Imp{{
@@ -6129,7 +6129,7 @@ func TestCollateVastIntegration(t *testing.T) {
 				Ext:   json.RawMessage(`{"prebid":{"bidder":{"appnexus":{"placementId":1}}}}`),
 			}},
 			Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-			Ext:  json.RawMessage(`{"openads":{"cache":{"collatevast":{}}}}`),
+			Ext:  json.RawMessage(`{"openads":{"cache":{"collatedvast":{}}}}`),
 		}
 
 		auctionRequest := &AuctionRequest{
@@ -6157,11 +6157,11 @@ func TestCollateVastIntegration(t *testing.T) {
 		if !assert.NotNil(t, extResp.Prebid.Cache, "ext.openads.cache should exist") {
 			return
 		}
-		if !assert.NotNil(t, extResp.Prebid.Cache.CollateVast, "ext.openads.cache.collatevast should exist") {
+		if !assert.NotNil(t, extResp.Prebid.Cache.CollatedVast, "ext.openads.cache.collatedvast should exist") {
 			return
 		}
-		assert.NotEmpty(t, extResp.Prebid.Cache.CollateVast.Key, "cache key should not be empty")
-		assert.Contains(t, extResp.Prebid.Cache.CollateVast.URL, extResp.Prebid.Cache.CollateVast.Key, "cache URL should contain the key")
+		assert.NotEmpty(t, extResp.Prebid.Cache.CollatedVast.Key, "cache key should not be empty")
+		assert.Contains(t, extResp.Prebid.Cache.CollatedVast.URL, extResp.Prebid.Cache.CollatedVast.Key, "cache URL should contain the key")
 	})
 
 	t.Run("return_bids false strips seatbid but keeps cache", func(t *testing.T) {
@@ -6173,7 +6173,7 @@ func TestCollateVastIntegration(t *testing.T) {
 				Ext:   json.RawMessage(`{"prebid":{"bidder":{"appnexus":{"placementId":1}}}}`),
 			}},
 			Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-			Ext:  json.RawMessage(`{"openads":{"cache":{"collatevast":{"returnbids":false}}}}`),
+			Ext:  json.RawMessage(`{"openads":{"cache":{"collatedvast":{"returnbids":false}}}}`),
 		}
 
 		auctionRequest := &AuctionRequest{
@@ -6201,13 +6201,13 @@ func TestCollateVastIntegration(t *testing.T) {
 		if !assert.NotNil(t, extResp.Prebid.Cache, "ext.openads.cache should exist even when returnbids is false") {
 			return
 		}
-		if !assert.NotNil(t, extResp.Prebid.Cache.CollateVast, "ext.openads.cache.collatevast should exist even when returnbids is false") {
+		if !assert.NotNil(t, extResp.Prebid.Cache.CollatedVast, "ext.openads.cache.collatedvast should exist even when returnbids is false") {
 			return
 		}
-		assert.NotEmpty(t, extResp.Prebid.Cache.CollateVast.Key)
+		assert.NotEmpty(t, extResp.Prebid.Cache.CollatedVast.Key)
 	})
 
-	t.Run("collate_vast absent does not produce cache", func(t *testing.T) {
+	t.Run("collated_vast absent does not produce cache", func(t *testing.T) {
 		bidRequest := &openrtb2.BidRequest{
 			ID: "no-collate-test",
 			Imp: []openrtb2.Imp{{
@@ -6236,12 +6236,12 @@ func TestCollateVastIntegration(t *testing.T) {
 			return
 		}
 		if extResp.Prebid != nil {
-			assert.Nil(t, extResp.Prebid.Cache, "cache should not exist when collatevast is not set")
+			assert.Nil(t, extResp.Prebid.Cache, "cache should not exist when collatedvast is not set")
 		}
 	})
 }
 
-func TestApplyCollateVast(t *testing.T) {
+func TestApplyCollatedVast(t *testing.T) {
 	sampleVAST := `<?xml version="1.0" encoding="UTF-8"?><VAST version="3.0"><Ad id="ad-1"><InLine><AdSystem>test</AdSystem><AdTitle>Test</AdTitle><Advertiser>adv.com</Advertiser><Pricing model="CPM" currency="USD">10.00</Pricing><Category authority="iab">IAB1</Category><Creatives></Creatives></InLine></Ad></VAST>`
 
 	t.Run("populates cache key and URL in bidResponseExt", func(t *testing.T) {
@@ -6265,13 +6265,13 @@ func TestApplyCollateVast(t *testing.T) {
 			Warnings: map[openrtb_ext.BidderName][]openrtb_ext.ExtBidderMessage{},
 		}
 
-		e.applyCollateVast(context.Background(), adapterBids, imps, account, bidResponseExt)
+		e.applyCollatedVast(context.Background(), adapterBids, imps, account, bidResponseExt)
 
 		assert.NotNil(t, bidResponseExt.Prebid)
 		assert.NotNil(t, bidResponseExt.Prebid.Cache)
-		assert.NotNil(t, bidResponseExt.Prebid.Cache.CollateVast)
-		assert.NotEmpty(t, bidResponseExt.Prebid.Cache.CollateVast.Key)
-		assert.Contains(t, bidResponseExt.Prebid.Cache.CollateVast.URL, bidResponseExt.Prebid.Cache.CollateVast.Key)
+		assert.NotNil(t, bidResponseExt.Prebid.Cache.CollatedVast)
+		assert.NotEmpty(t, bidResponseExt.Prebid.Cache.CollatedVast.Key)
+		assert.Contains(t, bidResponseExt.Prebid.Cache.CollatedVast.URL, bidResponseExt.Prebid.Cache.CollatedVast.Key)
 	})
 
 	t.Run("no-op when no video bids", func(t *testing.T) {
@@ -6293,7 +6293,7 @@ func TestApplyCollateVast(t *testing.T) {
 			Warnings: map[openrtb_ext.BidderName][]openrtb_ext.ExtBidderMessage{},
 		}
 
-		e.applyCollateVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
+		e.applyCollatedVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
 
 		assert.Nil(t, bidResponseExt.Prebid)
 	})
@@ -6317,7 +6317,7 @@ func TestApplyCollateVast(t *testing.T) {
 			Warnings: map[openrtb_ext.BidderName][]openrtb_ext.ExtBidderMessage{},
 		}
 
-		e.applyCollateVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
+		e.applyCollatedVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
 
 		assert.Nil(t, bidResponseExt.Prebid)
 	})
@@ -6334,7 +6334,7 @@ func TestApplyCollateVast(t *testing.T) {
 			Warnings: map[openrtb_ext.BidderName][]openrtb_ext.ExtBidderMessage{},
 		}
 
-		e.applyCollateVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
+		e.applyCollatedVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
 
 		assert.Nil(t, bidResponseExt.Prebid)
 	})

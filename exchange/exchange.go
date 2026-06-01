@@ -265,9 +265,9 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 	}
 
 	cacheInstructions := getExtCacheInstructions(requestExtPrebid)
-	collateVast := requestExtPrebid.Cache != nil && requestExtPrebid.Cache.CollateVast != nil
-	collateReturnBids := !collateVast || requestExtPrebid.Cache.CollateVast.ReturnBids == nil || *requestExtPrebid.Cache.CollateVast.ReturnBids
-	if collateVast && !collateReturnBids {
+	collatedVast := requestExtPrebid.Cache != nil && requestExtPrebid.Cache.CollatedVast != nil
+	collateReturnBids := !collatedVast || requestExtPrebid.Cache.CollatedVast.ReturnBids == nil || *requestExtPrebid.Cache.CollatedVast.ReturnBids
+	if collatedVast && !collateReturnBids {
 		cacheInstructions.cacheBids = false
 		cacheInstructions.cacheVAST = false
 	}
@@ -353,7 +353,7 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 			return nil, err
 		}
 	}
-	if collateVast {
+	if collatedVast {
 		requestExtPrebid.MultiBid = requestExtLegacy.Prebid.MultiBid
 	}
 	errs = append(errs, floorErrs...)
@@ -554,9 +554,9 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 	bidResponse := e.buildBidResponse(ctx, liveAdapters, adapterBids, r.BidRequestWrapper, adapterExtra, auc, bidResponseExt, cacheInstructions.returnCreativeBids, cacheInstructions.returnCreativeVast, r.ImpExtInfoMap, r.PubID, errs, &seatNonBidBuilder)
 	bidResponse = adservertargeting.Apply(r.BidRequestWrapper, r.ResolvedBidRequest, bidResponse, r.QueryParams, bidResponseExt, r.Account.TruncateTargetAttribute)
 
-	if collateVast {
+	if collatedVast {
 		if anyBidsReturned {
-			e.applyCollateVast(ctx, adapterBids, r.BidRequestWrapper.BidRequest.Imp, &r.Account, bidResponseExt)
+			e.applyCollatedVast(ctx, adapterBids, r.BidRequestWrapper.BidRequest.Imp, &r.Account, bidResponseExt)
 		}
 		if !collateReturnBids {
 			bidResponse.SeatBid = nil
@@ -575,7 +575,7 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 	}, nil
 }
 
-func (e *exchange) applyCollateVast(ctx context.Context, adapterBids map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid, imps []openrtb2.Imp, account *config.Account, bidResponseExt *openrtb_ext.ExtBidResponse) {
+func (e *exchange) applyCollatedVast(ctx context.Context, adapterBids map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid, imps []openrtb2.Imp, account *config.Account, bidResponseExt *openrtb_ext.ExtBidResponse) {
 	var vastInputs []collate.BidInput
 	for bidderName, seatBid := range adapterBids {
 		if seatBid == nil {
@@ -633,7 +633,7 @@ func (e *exchange) applyCollateVast(ctx context.Context, adapterBids map[openrtb
 				for _, ce := range cacheErrs {
 					bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral] = append(
 						bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral],
-						openrtb_ext.ExtBidderMessage{Message: "collate_vast cache: " + ce.Error()},
+						openrtb_ext.ExtBidderMessage{Message: "collated_vast cache: " + ce.Error()},
 					)
 				}
 			}
@@ -642,7 +642,7 @@ func (e *exchange) applyCollateVast(ctx context.Context, adapterBids map[openrtb
 					bidResponseExt.Prebid = &openrtb_ext.ExtResponsePrebid{}
 				}
 				bidResponseExt.Prebid.Cache = &openrtb_ext.ExtResponsePrebidCache{
-					CollateVast: &openrtb_ext.ExtResponseCollateVastCache{
+					CollatedVast: &openrtb_ext.ExtResponseCollatedVastCache{
 						Key: uuids[0],
 						URL: buildCacheURL(e.cache, uuids[0]),
 					},
@@ -654,7 +654,7 @@ func (e *exchange) applyCollateVast(ctx context.Context, adapterBids map[openrtb
 	for _, collErr := range collated.Errors {
 		bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral] = append(
 			bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral],
-			openrtb_ext.ExtBidderMessage{Message: "collate_vast: " + collErr.Error()},
+			openrtb_ext.ExtBidderMessage{Message: "collated_vast: " + collErr.Error()},
 		)
 	}
 }

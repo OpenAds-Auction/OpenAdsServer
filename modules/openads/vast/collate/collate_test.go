@@ -25,11 +25,11 @@ func newCollateMetricsMock() *collateMetricsMock {
 	}
 }
 
-func (m *collateMetricsMock) RecordCollateVastVersionMismatch(adapterName openrtb_ext.BidderName) {
+func (m *collateMetricsMock) RecordCollatedVastVersionMismatch(adapterName openrtb_ext.BidderName) {
 	m.versionMismatch[adapterName]++
 }
 
-func (m *collateMetricsMock) RecordCollateVastMissingMetadata(adapterName openrtb_ext.BidderName) {
+func (m *collateMetricsMock) RecordCollatedVastMissingMetadata(adapterName openrtb_ext.BidderName) {
 	m.missingMetadata[adapterName]++
 }
 

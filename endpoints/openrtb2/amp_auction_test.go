@@ -1070,7 +1070,7 @@ func skipAmpTest(test testCase) bool {
 	}
 
 	// request.ext.prebid.cache is initialised in AMP if it is not present in request
-	if strings.Contains(test.ExpectedErrorMessage, `Invalid request: request.ext is invalid: request.ext.prebid.cache requires one of the "bids", "vastxml", or "collatevast" properties`) ||
+	if strings.Contains(test.ExpectedErrorMessage, `Invalid request: request.ext is invalid: request.ext.prebid.cache requires one of the "bids", "vastxml", or "collatedvast" properties`) ||
 		strings.Contains(test.ExpectedErrorMessage, `Invalid request: ext.prebid.storedrequest.id must be a string`) {
 		return true
 	}

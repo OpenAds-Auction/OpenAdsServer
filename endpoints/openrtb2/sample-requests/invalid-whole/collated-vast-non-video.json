@@ -1,5 +1,5 @@
 {
-    "description": "collate_vast enabled with non-video impression",
+    "description": "collated_vast enabled with non-video impression",
     "mockBidRequest": {
         "id": "some-request-id",
         "site": {
@@ -26,11 +26,11 @@
         "ext": {
             "openads": {
                 "cache": {
-                    "collatevast": {}
+                    "collatedvast": {}
                 }
             }
         }
     },
-    "expectedErrorMessage": "Invalid request: request.imp[0] must have a video object when collatevast is enabled",
+    "expectedErrorMessage": "Invalid request: request.imp[0] must have a video object when collatedvast is enabled",
     "expectedReturnCode": 400
 }

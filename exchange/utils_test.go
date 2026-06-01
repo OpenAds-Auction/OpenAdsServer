@@ -6035,7 +6035,7 @@ func intPtr(i int) *int {
 	return &i
 }
 
-func TestEnsureCollateVastMultiBid(t *testing.T) {
+func TestEnsureCollatedVastMultiBid(t *testing.T) {
 	maxBids := func(n int) *int { return &n }
 
 	t.Run("adds multibid for bidders not already covered", func(t *testing.T) {
@@ -6047,7 +6047,7 @@ func TestEnsureCollateVastMultiBid(t *testing.T) {
 			"thetradedesk": {{ID: "1"}},
 		}
 
-		ensureCollateVastMultiBid(reqExt, impsByBidder)
+		ensureCollatedVastMultiBid(reqExt, impsByBidder)
 
 		assert.Len(t, reqExt.Prebid.MultiBid, 2)
 		bidders := map[string]int{}
@@ -6071,7 +6071,7 @@ func TestEnsureCollateVastMultiBid(t *testing.T) {
 			"thetradedesk": {{ID: "1"}},
 		}
 
-		ensureCollateVastMultiBid(reqExt, impsByBidder)
+		ensureCollatedVastMultiBid(reqExt, impsByBidder)
 
 		assert.Len(t, reqExt.Prebid.MultiBid, 2)
 		assert.Equal(t, "appnexus", reqExt.Prebid.MultiBid[0].Bidder)
@@ -6093,7 +6093,7 @@ func TestEnsureCollateVastMultiBid(t *testing.T) {
 			"thetradedesk": {{ID: "1"}},
 		}
 
-		ensureCollateVastMultiBid(reqExt, impsByBidder)
+		ensureCollatedVastMultiBid(reqExt, impsByBidder)
 
 		assert.Len(t, reqExt.Prebid.MultiBid, 1, "no new entries should be added")
 	})
@@ -6103,7 +6103,7 @@ func TestEnsureCollateVastMultiBid(t *testing.T) {
 			Prebid: openrtb_ext.ExtRequestPrebid{},
 		}
 
-		ensureCollateVastMultiBid(reqExt, map[string][]openrtb2.Imp{})
+		ensureCollatedVastMultiBid(reqExt, map[string][]openrtb2.Imp{})
 
 		assert.Empty(t, reqExt.Prebid.MultiBid)
 	})

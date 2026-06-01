@@ -76,7 +76,7 @@ func VAST(bids []BidInput, me metrics.MetricsEngine) Result {
 	var surviving []*etree.Element
 	for _, p := range parsed {
 		if p.version != targetVersion {
-			me.RecordCollateVastVersionMismatch(p.input.AdapterName)
+			me.RecordCollatedVastVersionMismatch(p.input.AdapterName)
 			errs = append(errs, fmt.Errorf("bid %q (imp %q): VAST version %q does not match target %q, discarding", p.input.BidID, p.input.ImpID, p.version, targetVersion))
 			continue
 		}
@@ -92,7 +92,7 @@ func VAST(bids []BidInput, me metrics.MetricsEngine) Result {
 			}
 
 			if child.SelectElement("Advertiser") == nil || child.SelectElement("Pricing") == nil || child.SelectElement("Category") == nil {
-				me.RecordCollateVastMissingMetadata(p.input.AdapterName)
+				me.RecordCollatedVastMissingMetadata(p.input.AdapterName)
 				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> missing required Advertiser, Pricing, or Category metadata, discarding", p.input.BidID, p.input.ImpID))
 				continue
 			}
