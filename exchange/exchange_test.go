@@ -6241,6 +6241,105 @@ func TestCollateVastIntegration(t *testing.T) {
 	})
 }
 
+func TestApplyCollateVast(t *testing.T) {
+	sampleVAST := `<?xml version="1.0" encoding="UTF-8"?><VAST version="3.0"><Ad id="ad-1"><InLine><AdSystem>test</AdSystem><AdTitle>Test</AdTitle><Advertiser>adv.com</Advertiser><Pricing model="CPM" currency="USD">10.00</Pricing><Category authority="iab">IAB1</Category><Creatives></Creatives></InLine></Ad></VAST>`
+
+	t.Run("populates cache key and URL in bidResponseExt", func(t *testing.T) {
+		e := &exchange{
+			cache: &wellBehavedCache{},
+			me:    &metricsConf.NilMetricsEngine{},
+		}
+		adapterBids := map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
+			openrtb_ext.BidderAppnexus: {
+				Bids: []*entities.PbsOrtbBid{
+					{
+						Bid:     &openrtb2.Bid{ID: "b1", ImpID: "imp1", Price: 10, AdM: sampleVAST, ADomain: []string{"adv.com"}, Cat: []string{"IAB1"}},
+						BidType: openrtb_ext.BidTypeVideo,
+					},
+				},
+			},
+		}
+		imps := []openrtb2.Imp{{ID: "imp1", Exp: 300}}
+		account := &config.Account{}
+		bidResponseExt := &openrtb_ext.ExtBidResponse{
+			Warnings: map[openrtb_ext.BidderName][]openrtb_ext.ExtBidderMessage{},
+		}
+
+		e.applyCollateVast(context.Background(), adapterBids, imps, account, bidResponseExt)
+
+		assert.NotNil(t, bidResponseExt.Prebid)
+		assert.NotNil(t, bidResponseExt.Prebid.Cache)
+		assert.NotNil(t, bidResponseExt.Prebid.Cache.CollateVast)
+		assert.NotEmpty(t, bidResponseExt.Prebid.Cache.CollateVast.Key)
+		assert.Contains(t, bidResponseExt.Prebid.Cache.CollateVast.URL, bidResponseExt.Prebid.Cache.CollateVast.Key)
+	})
+
+	t.Run("no-op when no video bids", func(t *testing.T) {
+		e := &exchange{
+			cache: &wellBehavedCache{},
+			me:    &metricsConf.NilMetricsEngine{},
+		}
+		adapterBids := map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
+			openrtb_ext.BidderAppnexus: {
+				Bids: []*entities.PbsOrtbBid{
+					{
+						Bid:     &openrtb2.Bid{ID: "b1", ImpID: "imp1", Price: 5, AdM: "<div>banner</div>"},
+						BidType: openrtb_ext.BidTypeBanner,
+					},
+				},
+			},
+		}
+		bidResponseExt := &openrtb_ext.ExtBidResponse{
+			Warnings: map[openrtb_ext.BidderName][]openrtb_ext.ExtBidderMessage{},
+		}
+
+		e.applyCollateVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
+
+		assert.Nil(t, bidResponseExt.Prebid)
+	})
+
+	t.Run("no-op when video bids have empty AdM", func(t *testing.T) {
+		e := &exchange{
+			cache: &wellBehavedCache{},
+			me:    &metricsConf.NilMetricsEngine{},
+		}
+		adapterBids := map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
+			openrtb_ext.BidderAppnexus: {
+				Bids: []*entities.PbsOrtbBid{
+					{
+						Bid:     &openrtb2.Bid{ID: "b1", ImpID: "imp1", Price: 10, AdM: ""},
+						BidType: openrtb_ext.BidTypeVideo,
+					},
+				},
+			},
+		}
+		bidResponseExt := &openrtb_ext.ExtBidResponse{
+			Warnings: map[openrtb_ext.BidderName][]openrtb_ext.ExtBidderMessage{},
+		}
+
+		e.applyCollateVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
+
+		assert.Nil(t, bidResponseExt.Prebid)
+	})
+
+	t.Run("skips nil seatbids", func(t *testing.T) {
+		e := &exchange{
+			cache: &wellBehavedCache{},
+			me:    &metricsConf.NilMetricsEngine{},
+		}
+		adapterBids := map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
+			openrtb_ext.BidderAppnexus: nil,
+		}
+		bidResponseExt := &openrtb_ext.ExtBidResponse{
+			Warnings: map[openrtb_ext.BidderName][]openrtb_ext.ExtBidderMessage{},
+		}
+
+		e.applyCollateVast(context.Background(), adapterBids, nil, &config.Account{}, bidResponseExt)
+
+		assert.Nil(t, bidResponseExt.Prebid)
+	})
+}
+
 func TestSelectNewDuration(t *testing.T) {
 	type testInput struct {
 		dur       int

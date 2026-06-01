@@ -6034,3 +6034,77 @@ func TestExtractAndCleanBuyerUIDs(t *testing.T) {
 func intPtr(i int) *int {
 	return &i
 }
+
+func TestEnsureCollateVastMultiBid(t *testing.T) {
+	maxBids := func(n int) *int { return &n }
+
+	t.Run("adds multibid for bidders not already covered", func(t *testing.T) {
+		reqExt := &openrtb_ext.ExtRequest{
+			Prebid: openrtb_ext.ExtRequestPrebid{},
+		}
+		impsByBidder := map[string][]openrtb2.Imp{
+			"appnexus":     {{ID: "1"}},
+			"thetradedesk": {{ID: "1"}},
+		}
+
+		ensureCollateVastMultiBid(reqExt, impsByBidder)
+
+		assert.Len(t, reqExt.Prebid.MultiBid, 2)
+		bidders := map[string]int{}
+		for _, mb := range reqExt.Prebid.MultiBid {
+			bidders[mb.Bidder] = *mb.MaxBids
+		}
+		assert.Equal(t, 20, bidders["appnexus"])
+		assert.Equal(t, 20, bidders["thetradedesk"])
+	})
+
+	t.Run("skips bidders already in multibid by Bidder field", func(t *testing.T) {
+		reqExt := &openrtb_ext.ExtRequest{
+			Prebid: openrtb_ext.ExtRequestPrebid{
+				MultiBid: []*openrtb_ext.ExtMultiBid{
+					{Bidder: "appnexus", MaxBids: maxBids(5)},
+				},
+			},
+		}
+		impsByBidder := map[string][]openrtb2.Imp{
+			"appnexus":     {{ID: "1"}},
+			"thetradedesk": {{ID: "1"}},
+		}
+
+		ensureCollateVastMultiBid(reqExt, impsByBidder)
+
+		assert.Len(t, reqExt.Prebid.MultiBid, 2)
+		assert.Equal(t, "appnexus", reqExt.Prebid.MultiBid[0].Bidder)
+		assert.Equal(t, 5, *reqExt.Prebid.MultiBid[0].MaxBids)
+		assert.Equal(t, "thetradedesk", reqExt.Prebid.MultiBid[1].Bidder)
+		assert.Equal(t, 20, *reqExt.Prebid.MultiBid[1].MaxBids)
+	})
+
+	t.Run("skips bidders already in multibid by Bidders slice", func(t *testing.T) {
+		reqExt := &openrtb_ext.ExtRequest{
+			Prebid: openrtb_ext.ExtRequestPrebid{
+				MultiBid: []*openrtb_ext.ExtMultiBid{
+					{Bidders: []string{"appnexus", "thetradedesk"}, MaxBids: maxBids(3)},
+				},
+			},
+		}
+		impsByBidder := map[string][]openrtb2.Imp{
+			"appnexus":     {{ID: "1"}},
+			"thetradedesk": {{ID: "1"}},
+		}
+
+		ensureCollateVastMultiBid(reqExt, impsByBidder)
+
+		assert.Len(t, reqExt.Prebid.MultiBid, 1, "no new entries should be added")
+	})
+
+	t.Run("no-op when impsByBidder is empty", func(t *testing.T) {
+		reqExt := &openrtb_ext.ExtRequest{
+			Prebid: openrtb_ext.ExtRequestPrebid{},
+		}
+
+		ensureCollateVastMultiBid(reqExt, map[string][]openrtb2.Imp{})
+
+		assert.Empty(t, reqExt.Prebid.MultiBid)
+	})
+}
