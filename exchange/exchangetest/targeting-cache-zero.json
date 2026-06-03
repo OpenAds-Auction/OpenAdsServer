@@ -97,8 +97,10 @@
                       "cacheId": "0",
                       "url": "https://www.pbcserver.com/pbcache/endpoint?uuid=0"
                     },
-                    "key": "",
-                    "url": ""
+                    "vastXml": {
+                      "cacheId": "1",
+                      "url": "https://www.pbcserver.com/pbcache/endpoint?uuid=1"
+                    }
                   },
                   "type": "video",
                   "targeting": {

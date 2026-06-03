@@ -713,6 +713,12 @@ type Cache struct {
 	ExpectedTimeMillis int `mapstructure:"expected_millis"`
 
 	DefaultTTLs DefaultTTLs `mapstructure:"default_ttl_seconds"`
+
+	// DisableBidCaching is a server-side kill switch that forces cacheBids=false
+	// and returnCreativeBids=true regardless of what the request says. This lets
+	// operators disable bid caching without requiring publisher changes. VAST XML
+	// caching is unaffected.
+	DisableBidCaching bool `mapstructure:"disable_bid_caching"`
 }
 
 // Default TTLs to use to cache bids for different types of imps.

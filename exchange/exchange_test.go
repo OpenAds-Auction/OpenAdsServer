@@ -172,7 +172,7 @@ func TestCharacterEscape(t *testing.T) {
 	var errList []error
 
 	// 	4) Build bid response
-	bidResp := e.buildBidResponse(context.Background(), liveAdapters, adapterBids, bidRequest, adapterExtra, nil, nil, true, nil, "", errList, &SeatNonBidBuilder{})
+	bidResp := e.buildBidResponse(context.Background(), liveAdapters, adapterBids, bidRequest, adapterExtra, nil, nil, true, true, nil, "", errList, &SeatNonBidBuilder{})
 
 	// 	5) Assert we have no errors and one '&' character as we are supposed to
 	if len(errList) > 0 {
@@ -1040,56 +1040,46 @@ func TestReturnCreativeEndToEnd(t *testing.T) {
 			},
 		},
 		{
-			groupDesc: "Bids field comes with returnCreative value",
+			groupDesc: "returnCreative set to true explicitly",
 			testCases: []aTest{
 				{
-					"Bids returnCreative set to true, return ad markup in response",
-					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":true}}}}`),
+					"Bids returnCreative set to true",
+					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":true}},"targeting":{"pricegranularity":{"precision":2,"ranges":[{"min":0,"max":20,"increment":0.1}]},"includewinners":true}}}`),
 					sampleAd,
 				},
 				{
-					"Bids returnCreative set to false, don't return ad markup in response",
-					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":false}}}}`),
-					"",
+					"Vast returnCreative set to true",
+					json.RawMessage(`{"prebid":{"cache":{"vastXml":{"returnCreative":true}},"targeting":{"pricegranularity":{"precision":2,"ranges":[{"min":0,"max":20,"increment":0.1}]},"includewinners":true}}}`),
+					sampleAd,
+				},
+				{
+					"Both returnCreative set to true",
+					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":true},"vastXml":{"returnCreative":true}},"targeting":{"pricegranularity":{"precision":2,"ranges":[{"min":0,"max":20,"increment":0.1}]},"includewinners":true}}}`),
+					sampleAd,
 				},
 			},
 		},
 		{
-			groupDesc: "Vast field comes with returnCreative value",
+			groupDesc: "returnCreative set to false with targeting enabled, banner bid cached via cache.bids",
 			testCases: []aTest{
 				{
-					"Vast returnCreative set to true, return ad markup in response",
-					json.RawMessage(`{"prebid":{"cache":{"vastXml":{"returnCreative":true}}}}`),
-					sampleAd,
-				},
-				{
-					"Vast returnCreative set to false, don't return ad markup in response",
-					json.RawMessage(`{"prebid":{"cache":{"vastXml":{"returnCreative":false}}}}`),
-					"",
-				},
-			},
-		},
-		{
-			groupDesc: "Both Bids and Vast come with their own returnCreative value",
-			testCases: []aTest{
-				{
-					"Both false, expect empty AdM",
-					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":false},"vastXml":{"returnCreative":false}}}}`),
+					"Bids returnCreative false, banner bid stripped",
+					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":false}},"targeting":{"pricegranularity":{"precision":2,"ranges":[{"min":0,"max":20,"increment":0.1}]},"includewinners":true}}}`),
 					"",
 				},
 				{
-					"Bids returnCreative is true, expect valid AdM",
-					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":true},"vastXml":{"returnCreative":false}}}}`),
+					"Vast returnCreative false, banner bid unaffected because vast flag only applies to video",
+					json.RawMessage(`{"prebid":{"cache":{"bids":{},"vastXml":{"returnCreative":false}},"targeting":{"pricegranularity":{"precision":2,"ranges":[{"min":0,"max":20,"increment":0.1}]},"includewinners":true}}}`),
 					sampleAd,
 				},
 				{
-					"Vast returnCreative is true, expect valid AdM",
-					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":false},"vastXml":{"returnCreative":true}}}}`),
-					sampleAd,
+					"Bids returnCreative false and vast returnCreative true, banner bid stripped by bids flag",
+					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":false},"vastXml":{"returnCreative":true}},"targeting":{"pricegranularity":{"precision":2,"ranges":[{"min":0,"max":20,"increment":0.1}]},"includewinners":true}}}`),
+					"",
 				},
 				{
-					"Both field's returnCreative set to true, expect valid AdM",
-					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":true},"vastXml":{"returnCreative":true}}}}`),
+					"Bids returnCreative true and vast returnCreative false, banner bid kept because bids flag is true",
+					json.RawMessage(`{"prebid":{"cache":{"bids":{"returnCreative":true},"vastXml":{"returnCreative":false}},"targeting":{"pricegranularity":{"precision":2,"ranges":[{"min":0,"max":20,"increment":0.1}]},"includewinners":true}}}`),
 					sampleAd,
 				},
 			},
@@ -1346,7 +1336,7 @@ func TestGetBidCacheInfoEndToEnd(t *testing.T) {
 	var errList []error
 
 	// 	4) Build bid response
-	bid_resp := e.buildBidResponse(context.Background(), liveAdapters, adapterBids, bidRequest, adapterExtra, auc, nil, true, nil, "", errList, &SeatNonBidBuilder{})
+	bid_resp := e.buildBidResponse(context.Background(), liveAdapters, adapterBids, bidRequest, adapterExtra, auc, nil, true, true, nil, "", errList, &SeatNonBidBuilder{})
 
 	expectedBidResponse := &openrtb2.BidResponse{
 		SeatBid: []openrtb2.SeatBid{
@@ -1354,7 +1344,7 @@ func TestGetBidCacheInfoEndToEnd(t *testing.T) {
 				Seat: string(bidderName),
 				Bid: []openrtb2.Bid{
 					{
-						Ext: json.RawMessage(`{ "prebid": { "cache": { "bids": { "cacheId": "` + testUUID + `", "url": "` + testExternalCacheScheme + `://` + testExternalCacheHost + `/` + testExternalCachePath + `?uuid=` + testUUID + `" }, "key": "", "url": "" }`),
+						Ext: json.RawMessage(`{ "prebid": { "cache": { "bids": { "cacheId": "` + testUUID + `", "url": "` + testExternalCacheScheme + `://` + testExternalCacheHost + `/` + testExternalCachePath + `?uuid=` + testUUID + `" } }`),
 					},
 				},
 			},
@@ -1383,34 +1373,71 @@ func TestBidReturnsCreative(t *testing.T) {
 	sampleAd := "<?xml version=\"1.0\" encoding=\"UTF-8\"?><VAST ...></VAST>"
 	sampleOpenrtbBid := &openrtb2.Bid{ID: "some-bid-id", AdM: sampleAd}
 
-	// Define test cases
 	testCases := []struct {
 		description            string
-		inReturnCreative       bool
+		bidType                openrtb_ext.BidType
+		auc                    *auction
+		inReturnCreativeBids   bool
+		inReturnCreativeVast   bool
 		expectedCreativeMarkup string
 	}{
 		{
-			"returnCreative set to true, expect a full creative markup string in returned bid",
-			true,
-			sampleAd,
+			description:            "banner with bidCache, returnCreativeBids=true, AdM kept",
+			bidType:                openrtb_ext.BidTypeBanner,
+			auc:                    &auction{cacheIds: map[*openrtb2.Bid]string{sampleOpenrtbBid: "CACHE_UUID"}},
+			inReturnCreativeBids:   true,
+			inReturnCreativeVast:   true,
+			expectedCreativeMarkup: sampleAd,
 		},
 		{
-			"returnCreative set to false, expect empty creative markup string in returned bid",
-			false,
-			"",
+			description:            "banner with bidCache, returnCreativeBids=false, AdM stripped",
+			bidType:                openrtb_ext.BidTypeBanner,
+			auc:                    &auction{cacheIds: map[*openrtb2.Bid]string{sampleOpenrtbBid: "CACHE_UUID"}},
+			inReturnCreativeBids:   false,
+			inReturnCreativeVast:   true,
+			expectedCreativeMarkup: "",
 		},
-	}
-
-	// Test set up
-	sampleBids := []*entities.PbsOrtbBid{
 		{
-			Bid:            sampleOpenrtbBid,
-			BidType:        openrtb_ext.BidTypeBanner,
-			BidTargets:     map[string]string{},
-			GeneratedBidID: "randomId",
+			description:            "banner with bidCache, returnCreativeVast=false, AdM kept because vast flag doesn't affect banner",
+			bidType:                openrtb_ext.BidTypeBanner,
+			auc:                    &auction{cacheIds: map[*openrtb2.Bid]string{sampleOpenrtbBid: "CACHE_UUID"}},
+			inReturnCreativeBids:   true,
+			inReturnCreativeVast:   false,
+			expectedCreativeMarkup: sampleAd,
+		},
+		{
+			description:            "video with vastCache, returnCreativeVast=false, AdM stripped",
+			bidType:                openrtb_ext.BidTypeVideo,
+			auc:                    &auction{vastCacheIds: map[*openrtb2.Bid]string{sampleOpenrtbBid: "VAST_UUID"}},
+			inReturnCreativeBids:   true,
+			inReturnCreativeVast:   false,
+			expectedCreativeMarkup: "",
+		},
+		{
+			description:            "video with vastCache, returnCreativeVast=true, AdM kept",
+			bidType:                openrtb_ext.BidTypeVideo,
+			auc:                    &auction{vastCacheIds: map[*openrtb2.Bid]string{sampleOpenrtbBid: "VAST_UUID"}},
+			inReturnCreativeBids:   true,
+			inReturnCreativeVast:   true,
+			expectedCreativeMarkup: sampleAd,
+		},
+		{
+			description:            "video with vastCache, returnCreativeBids=false, AdM kept because bids flag doesn't affect vast-cached video",
+			bidType:                openrtb_ext.BidTypeVideo,
+			auc:                    &auction{vastCacheIds: map[*openrtb2.Bid]string{sampleOpenrtbBid: "VAST_UUID"}},
+			inReturnCreativeBids:   false,
+			inReturnCreativeVast:   true,
+			expectedCreativeMarkup: sampleAd,
+		},
+		{
+			description:            "banner with no cache IDs, returnCreativeBids=false, AdM kept because nothing was cached",
+			bidType:                openrtb_ext.BidTypeBanner,
+			auc:                    &auction{},
+			inReturnCreativeBids:   false,
+			inReturnCreativeVast:   false,
+			expectedCreativeMarkup: sampleAd,
 		},
 	}
-	sampleAuction := &auction{cacheIds: map[*openrtb2.Bid]string{sampleOpenrtbBid: "CACHE_UUID_1234"}}
 
 	noBidHandler := func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }
 	server := httptest.NewServer(http.HandlerFunc(noBidHandler))
@@ -1431,128 +1458,131 @@ func TestBidReturnsCreative(t *testing.T) {
 	}
 	e.cache = &wellBehavedCache{}
 	e.me = &metricsConf.NilMetricsEngine{}
-
 	e.currencyConverter = currency.NewRateConverter(&http.Client{}, time.Duration(1), "", time.Duration(0))
 
-	//Run tests
 	for _, test := range testCases {
-		resultingBids, resultingErrs := e.makeBid(sampleBids, sampleAuction, test.inReturnCreative, nil, &openrtb_ext.RequestWrapper{}, nil, "", "", &SeatNonBidBuilder{})
+		t.Run(test.description, func(t *testing.T) {
+			sampleBids := []*entities.PbsOrtbBid{
+				{
+					Bid:            sampleOpenrtbBid,
+					BidType:        test.bidType,
+					BidTargets:     map[string]string{},
+					GeneratedBidID: "randomId",
+				},
+			}
 
-		assert.Equal(t, 0, len(resultingErrs), "%s. Test should not return errors \n", test.description)
-		assert.Equal(t, test.expectedCreativeMarkup, resultingBids[0].AdM, "%s. Ad markup string doesn't match expected \n", test.description)
+			resultingBids, resultingErrs := e.makeBid(sampleBids, test.auc, test.inReturnCreativeBids, test.inReturnCreativeVast, nil, &openrtb_ext.RequestWrapper{}, nil, "", "", &SeatNonBidBuilder{})
 
-		var bidExt openrtb_ext.ExtBid
-		jsonutil.UnmarshalValid(resultingBids[0].Ext, &bidExt)
-		assert.Equal(t, 0, bidExt.Prebid.DealPriority, "%s. Test should have DealPriority set to 0", test.description)
-		assert.Equal(t, false, bidExt.Prebid.DealTierSatisfied, "%s. Test should have DealTierSatisfied set to false", test.description)
+			assert.Equal(t, 0, len(resultingErrs), "should not return errors")
+			assert.Equal(t, test.expectedCreativeMarkup, resultingBids[0].AdM, "ad markup doesn't match")
+		})
 	}
 }
 
 func TestGetBidCacheInfo(t *testing.T) {
 	bid := &openrtb2.Bid{ID: "42"}
 	testCases := []struct {
-		description      string
-		scheme           string
-		host             string
-		path             string
-		bid              *entities.PbsOrtbBid
-		auction          *auction
-		expectedFound    bool
-		expectedCacheID  string
-		expectedCacheURL string
+		description          string
+		scheme               string
+		host                 string
+		path                 string
+		bid                  *entities.PbsOrtbBid
+		auction              *auction
+		expectedBidCacheID   string
+		expectedBidCacheURL  string
+		expectedVastCacheID  string
+		expectedVastCacheURL string
 	}{
 		{
-			description:      "JSON Cache ID",
-			scheme:           "https",
-			host:             "prebid.org",
-			path:             "cache",
-			bid:              &entities.PbsOrtbBid{Bid: bid},
-			auction:          &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
-			expectedFound:    true,
-			expectedCacheID:  "anyID",
-			expectedCacheURL: "https://prebid.org/cache?uuid=anyID",
+			description:         "JSON Cache ID",
+			scheme:              "https",
+			host:                "prebid.org",
+			path:                "cache",
+			bid:                 &entities.PbsOrtbBid{Bid: bid},
+			auction:             &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
+			expectedBidCacheID:  "anyID",
+			expectedBidCacheURL: "https://prebid.org/cache?uuid=anyID",
 		},
 		{
-			description:      "VAST Cache ID",
-			scheme:           "https",
-			host:             "prebid.org",
-			path:             "cache",
-			bid:              &entities.PbsOrtbBid{Bid: bid},
-			auction:          &auction{vastCacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
-			expectedFound:    true,
-			expectedCacheID:  "anyID",
-			expectedCacheURL: "https://prebid.org/cache?uuid=anyID",
+			description:          "VAST Cache ID",
+			scheme:               "https",
+			host:                 "prebid.org",
+			path:                 "cache",
+			bid:                  &entities.PbsOrtbBid{Bid: bid},
+			auction:              &auction{vastCacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
+			expectedVastCacheID:  "anyID",
+			expectedVastCacheURL: "https://prebid.org/cache?uuid=anyID",
 		},
 		{
-			description:      "Cache ID Not Found",
-			scheme:           "https",
-			host:             "prebid.org",
-			path:             "cache",
-			bid:              &entities.PbsOrtbBid{Bid: bid},
-			auction:          &auction{},
-			expectedFound:    false,
-			expectedCacheID:  "",
-			expectedCacheURL: "",
+			description: "Both Cache IDs",
+			scheme:      "https",
+			host:        "prebid.org",
+			path:        "cache",
+			bid:         &entities.PbsOrtbBid{Bid: bid},
+			auction: &auction{
+				cacheIds:     map[*openrtb2.Bid]string{bid: "bidID"},
+				vastCacheIds: map[*openrtb2.Bid]string{bid: "vastID"},
+			},
+			expectedBidCacheID:   "bidID",
+			expectedBidCacheURL:  "https://prebid.org/cache?uuid=bidID",
+			expectedVastCacheID:  "vastID",
+			expectedVastCacheURL: "https://prebid.org/cache?uuid=vastID",
 		},
 		{
-			description:      "Scheme Not Provided",
-			host:             "prebid.org",
-			path:             "cache",
-			bid:              &entities.PbsOrtbBid{Bid: bid},
-			auction:          &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
-			expectedFound:    true,
-			expectedCacheID:  "anyID",
-			expectedCacheURL: "prebid.org/cache?uuid=anyID",
+			description: "Cache ID Not Found",
+			scheme:      "https",
+			host:        "prebid.org",
+			path:        "cache",
+			bid:         &entities.PbsOrtbBid{Bid: bid},
+			auction:     &auction{},
 		},
 		{
-			description:      "Host And Path Not Provided - Without Scheme",
-			bid:              &entities.PbsOrtbBid{Bid: bid},
-			auction:          &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
-			expectedFound:    true,
-			expectedCacheID:  "anyID",
-			expectedCacheURL: "",
+			description:         "Scheme Not Provided",
+			host:                "prebid.org",
+			path:                "cache",
+			bid:                 &entities.PbsOrtbBid{Bid: bid},
+			auction:             &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
+			expectedBidCacheID:  "anyID",
+			expectedBidCacheURL: "prebid.org/cache?uuid=anyID",
 		},
 		{
-			description:      "Host And Path Not Provided - With Scheme",
-			scheme:           "https",
-			bid:              &entities.PbsOrtbBid{Bid: bid},
-			auction:          &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
-			expectedFound:    true,
-			expectedCacheID:  "anyID",
-			expectedCacheURL: "",
+			description:         "Host And Path Not Provided - Without Scheme",
+			bid:                 &entities.PbsOrtbBid{Bid: bid},
+			auction:             &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
+			expectedBidCacheID:  "anyID",
+			expectedBidCacheURL: "",
 		},
 		{
-			description:      "Nil Bid",
-			scheme:           "https",
-			host:             "prebid.org",
-			path:             "cache",
-			bid:              nil,
-			auction:          &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
-			expectedFound:    false,
-			expectedCacheID:  "",
-			expectedCacheURL: "",
+			description:         "Host And Path Not Provided - With Scheme",
+			scheme:              "https",
+			bid:                 &entities.PbsOrtbBid{Bid: bid},
+			auction:             &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
+			expectedBidCacheID:  "anyID",
+			expectedBidCacheURL: "",
 		},
 		{
-			description:      "Nil Embedded Bid",
-			scheme:           "https",
-			host:             "prebid.org",
-			path:             "cache",
-			bid:              &entities.PbsOrtbBid{Bid: nil},
-			auction:          &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
-			expectedFound:    false,
-			expectedCacheID:  "",
-			expectedCacheURL: "",
+			description: "Nil Bid",
+			scheme:      "https",
+			host:        "prebid.org",
+			path:        "cache",
+			bid:         nil,
+			auction:     &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
 		},
 		{
-			description:      "Nil Auction",
-			scheme:           "https",
-			host:             "prebid.org",
-			path:             "cache",
-			bid:              &entities.PbsOrtbBid{Bid: bid},
-			auction:          nil,
-			expectedFound:    false,
-			expectedCacheID:  "",
-			expectedCacheURL: "",
+			description: "Nil Embedded Bid",
+			scheme:      "https",
+			host:        "prebid.org",
+			path:        "cache",
+			bid:         &entities.PbsOrtbBid{Bid: nil},
+			auction:     &auction{cacheIds: map[*openrtb2.Bid]string{bid: "anyID"}},
+		},
+		{
+			description: "Nil Auction",
+			scheme:      "https",
+			host:        "prebid.org",
+			path:        "cache",
+			bid:         &entities.PbsOrtbBid{Bid: bid},
+			auction:     nil,
 		},
 	}
 
@@ -1565,11 +1595,25 @@ func TestGetBidCacheInfo(t *testing.T) {
 			},
 		}
 
-		cacheInfo, found := exchange.getBidCacheInfo(test.bid, test.auction)
+		bidCache, vastCache := exchange.getBidCacheInfo(test.bid, test.auction)
 
-		assert.Equal(t, test.expectedFound, found, test.description+":found")
-		assert.Equal(t, test.expectedCacheID, cacheInfo.CacheId, test.description+":id")
-		assert.Equal(t, test.expectedCacheURL, cacheInfo.Url, test.description+":url")
+		if test.expectedBidCacheID == "" && test.expectedBidCacheURL == "" {
+			assert.Nil(t, bidCache, test.description+":bidCache should be nil")
+		} else {
+			if assert.NotNil(t, bidCache, test.description+":bidCache should not be nil") {
+				assert.Equal(t, test.expectedBidCacheID, bidCache.CacheId, test.description+":bidCache.CacheId")
+				assert.Equal(t, test.expectedBidCacheURL, bidCache.Url, test.description+":bidCache.Url")
+			}
+		}
+
+		if test.expectedVastCacheID == "" && test.expectedVastCacheURL == "" {
+			assert.Nil(t, vastCache, test.description+":vastCache should be nil")
+		} else {
+			if assert.NotNil(t, vastCache, test.description+":vastCache should not be nil") {
+				assert.Equal(t, test.expectedVastCacheID, vastCache.CacheId, test.description+":vastCache.CacheId")
+				assert.Equal(t, test.expectedVastCacheURL, vastCache.Url, test.description+":vastCache.Url")
+			}
+		}
 	}
 }
 
@@ -1721,7 +1765,7 @@ func TestBidResponseCurrency(t *testing.T) {
 	}
 	// Run tests
 	for i := range testCases {
-		actualBidResp := e.buildBidResponse(context.Background(), liveAdapters, testCases[i].adapterBids, bidRequest, adapterExtra, nil, bidResponseExt, true, nil, "", errList, &SeatNonBidBuilder{})
+		actualBidResp := e.buildBidResponse(context.Background(), liveAdapters, testCases[i].adapterBids, bidRequest, adapterExtra, nil, bidResponseExt, true, true, nil, "", errList, &SeatNonBidBuilder{})
 		assert.Equalf(t, testCases[i].expectedBidResponse, actualBidResp, fmt.Sprintf("[TEST_FAILED] Objects must be equal for test: %s \n Expected: >>%s<< \n Actual: >>%s<< ", testCases[i].description, testCases[i].expectedBidResponse.Ext, actualBidResp.Ext))
 	}
 }
@@ -1789,7 +1833,7 @@ func TestBidResponseImpExtInfo(t *testing.T) {
 
 	expectedBidResponseExt := `{"origbidcpm":0,"prebid":{"meta":{"adaptercode":"appnexus"},"type":"video","passthrough":{"imp_passthrough_val":1}},"storedrequestattributes":{"h":480,"mimes":["video/mp4"]}}`
 
-	actualBidResp := e.buildBidResponse(context.Background(), liveAdapters, adapterBids, bidRequest, nil, nil, nil, true, impExtInfo, "", errList, &SeatNonBidBuilder{})
+	actualBidResp := e.buildBidResponse(context.Background(), liveAdapters, adapterBids, bidRequest, nil, nil, nil, true, true, impExtInfo, "", errList, &SeatNonBidBuilder{})
 
 	resBidExt := string(actualBidResp.SeatBid[0].Bid[0].Ext)
 	assert.Equalf(t, expectedBidResponseExt, resBidExt, "Expected bid response extension is incorrect")
@@ -4930,7 +4974,7 @@ func TestMakeBidWithValidation(t *testing.T) {
 			e.bidValidationEnforcement = test.givenValidations
 			sampleBids := test.givenBids
 			nonBids := &SeatNonBidBuilder{}
-			resultingBids, resultingErrs := e.makeBid(sampleBids, sampleAuction, true, ImpExtInfoMap, bidRequest, bidExtResponse, test.givenSeat, "", nonBids)
+			resultingBids, resultingErrs := e.makeBid(sampleBids, sampleAuction, true, true, ImpExtInfoMap, bidRequest, bidExtResponse, test.givenSeat, "", nonBids)
 
 			assert.Equal(t, 0, len(resultingErrs))
 			assert.Equal(t, test.expectedNumOfBids, len(resultingBids))
