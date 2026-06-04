@@ -39,9 +39,10 @@ type ExtBidPrebidFloors struct {
 
 // ExtBidPrebidCache defines the contract for  bidresponse.seatbid.bid[i].ext.prebid.cache
 type ExtBidPrebidCache struct {
-	Key  string                 `json:"key"`
-	Url  string                 `json:"url"`
-	Bids *ExtBidPrebidCacheBids `json:"bids,omitempty"`
+	Key     string                 `json:"key,omitempty"`
+	Url     string                 `json:"url,omitempty"`
+	Bids    *ExtBidPrebidCacheBids `json:"bids,omitempty"`
+	VastXml *ExtBidPrebidCacheBids `json:"vastXml,omitempty"`
 }
 
 type ExtBidPrebidCacheBids struct {

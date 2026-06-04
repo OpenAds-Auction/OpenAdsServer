@@ -91,12 +91,10 @@
                   "meta": {
                   },
                   "cache": {
-                    "bids": {
+                    "vastXml": {
                       "cacheId": "0",
                       "url": "https://www.pbcserver.com/pbcache/endpoint?uuid=0"
-                    },
-                    "key": "",
-                    "url": ""
+                    }
                   },
                   "type": "video",
                   "targeting": {
