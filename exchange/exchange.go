@@ -30,7 +30,6 @@ import (
 	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/macros"
 	"github.com/prebid/prebid-server/v3/metrics"
-	"github.com/prebid/prebid-server/v3/modules/openads/vast/collate"
 	"github.com/prebid/prebid-server/v3/openrtb_ext"
 	"github.com/prebid/prebid-server/v3/ortb"
 	"github.com/prebid/prebid-server/v3/prebid_cache_client"
@@ -40,6 +39,7 @@ import (
 	"github.com/prebid/prebid-server/v3/usersync"
 	"github.com/prebid/prebid-server/v3/util/jsonutil"
 	"github.com/prebid/prebid-server/v3/util/maputil"
+	"github.com/prebid/prebid-server/v3/vast/collate"
 
 	"github.com/buger/jsonparser"
 	"github.com/gofrs/uuid"
