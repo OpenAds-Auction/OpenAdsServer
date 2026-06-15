@@ -497,6 +497,7 @@ const (
 	AuctionAuditFilterRegistered AuctionAuditAction = "filter_registered"
 	AuctionAuditFilterExpired    AuctionAuditAction = "filter_expired"
 	AuctionAuditEventMatched     AuctionAuditAction = "event_matched"
+	AuctionAuditEventDropped     AuctionAuditAction = "event_dropped"
 )
 
 // AuctionAuditActions returns possible auction audit actions.
@@ -505,6 +506,7 @@ func AuctionAuditActions() []AuctionAuditAction {
 		AuctionAuditFilterRegistered,
 		AuctionAuditFilterExpired,
 		AuctionAuditEventMatched,
+		AuctionAuditEventDropped,
 	}
 }
 
