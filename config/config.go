@@ -572,6 +572,7 @@ type AuctionAuditAnalytics struct {
 	MaxFilters      int                     `mapstructure:"max_filters"`
 	MaxFilterTTL    string                  `mapstructure:"max_filter_ttl"`
 	CleanupInterval string                  `mapstructure:"cleanup_interval"`
+	MaxEventsPerSec float64                 `mapstructure:"max_events_per_sec"`
 	Kafka           AuctionAuditKafkaConfig `mapstructure:"kafka"`
 }
 
@@ -1245,6 +1246,7 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("analytics.auction_audit.max_filters", 1000)
 	v.SetDefault("analytics.auction_audit.max_filter_ttl", "1h")
 	v.SetDefault("analytics.auction_audit.cleanup_interval", "10m")
+	v.SetDefault("analytics.auction_audit.max_events_per_sec", 5)
 	v.SetDefault("analytics.auction_audit.kafka.brokers", []string{})
 	v.SetDefault("analytics.auction_audit.kafka.matched_topic", "matched-auction-events")
 	v.SetDefault("analytics.auction_audit.kafka.filter_topic", "session-filters-request")

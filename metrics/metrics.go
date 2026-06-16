@@ -497,6 +497,7 @@ const (
 	AuctionAuditFilterRegistered AuctionAuditAction = "filter_registered"
 	AuctionAuditFilterExpired    AuctionAuditAction = "filter_expired"
 	AuctionAuditEventMatched     AuctionAuditAction = "event_matched"
+	AuctionAuditEventDropped     AuctionAuditAction = "event_dropped"
 )
 
 // AuctionAuditActions returns possible auction audit actions.
@@ -505,6 +506,7 @@ func AuctionAuditActions() []AuctionAuditAction {
 		AuctionAuditFilterRegistered,
 		AuctionAuditFilterExpired,
 		AuctionAuditEventMatched,
+		AuctionAuditEventDropped,
 	}
 }
 
@@ -586,7 +588,7 @@ type MetricsEngine interface {
 	RecordModuleTimeout(labels ModuleLabels)
 	RecordAdapterThrottled(adapterName openrtb_ext.BidderName)
 	RecordS3Analytics(destination AnalyticsDestination, status S3UploadStatus)
-	RecordAuctionAudit(action AuctionAuditAction, account string)
+	RecordAuctionAudit(action AuctionAuditAction, account string, inc int)
 	RecordAuctionAuditError(reason AuctionAuditErrorReason)
 	RecordAuctionAuditActiveFilters(count int)
 	RecordAdapterConnectionDialError(adapterName openrtb_ext.BidderName)

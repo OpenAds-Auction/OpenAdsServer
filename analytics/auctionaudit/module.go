@@ -39,7 +39,7 @@ func NewModule(cfg config.AuctionAuditAnalytics, metricsEngine metrics.MetricsEn
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	filterRegistry := NewFilterRegistry(cfg.MaxFilters, maxFilterTTL, metricsEngine)
+	filterRegistry := NewFilterRegistry(cfg.MaxFilters, maxFilterTTL, cfg.MaxEventsPerSec, metricsEngine)
 
 	producer, err := NewProducer(cfg.Kafka, metricsEngine)
 	if err != nil {
@@ -90,7 +90,12 @@ func (m *AuctionAuditModule) LogAuctionObject(ao *analytics.AuctionObject) {
 	}
 
 	mediaTypeSet := MediaTypeSetFromImps(req.Imp)
-	filters := m.filterRegistry.GetMatches(accountID, domain, appBundle, mediaTypeSet)
+	filters, dropped := m.filterRegistry.GetMatches(accountID, domain, appBundle, mediaTypeSet)
+
+	if dropped > 0 {
+		m.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditEventDropped, accountID, dropped)
+	}
+
 	if len(filters) == 0 {
 		return
 	}
@@ -103,9 +108,7 @@ func (m *AuctionAuditModule) LogAuctionObject(ao *analytics.AuctionObject) {
 		return
 	}
 
-	for range filters {
-		m.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditEventMatched, accountID)
-	}
+	m.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditEventMatched, accountID, len(filters))
 }
 
 func (m *AuctionAuditModule) Shutdown() {

@@ -239,8 +239,8 @@ func (me *MetricsEngineMock) RecordS3Analytics(destination AnalyticsDestination,
 	me.Called(destination, status)
 }
 
-func (me *MetricsEngineMock) RecordAuctionAudit(action AuctionAuditAction, account string) {
-	me.Called(action, account)
+func (me *MetricsEngineMock) RecordAuctionAudit(action AuctionAuditAction, account string, inc int) {
+	me.Called(action, account, inc)
 }
 
 func (me *MetricsEngineMock) RecordAuctionAuditError(reason AuctionAuditErrorReason) {

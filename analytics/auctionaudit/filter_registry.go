@@ -10,6 +10,7 @@ import (
 	"github.com/prebid/openrtb/v20/openrtb2"
 	"github.com/prebid/prebid-server/v3/logger"
 	"github.com/prebid/prebid-server/v3/metrics"
+	"golang.org/x/time/rate"
 )
 
 var (
@@ -88,6 +89,7 @@ func (s MediaTypeSet) ToSlice() []MediaType {
 type storedFilter struct {
 	*AuctionFilterRequest
 	mediaTypeSet MediaTypeSet
+	rateLimiter  *rate.Limiter
 }
 
 func (f *storedFilter) matches(domain, appBundle string, eventMediaTypes MediaTypeSet) bool {
@@ -108,20 +110,22 @@ func (f *storedFilter) matches(domain, appBundle string, eventMediaTypes MediaTy
 }
 
 type FilterRegistry struct {
-	mu            sync.RWMutex
-	byAccount     map[string]map[int32]*storedFilter // accountId -> sessionId -> filter
-	count         int
-	maxFilters    int
-	maxTTL        time.Duration
-	metricsEngine metrics.MetricsEngine
+	mu              sync.RWMutex
+	byAccount       map[string]map[int32]*storedFilter // accountId -> sessionId -> filter
+	count           int
+	maxFilters      int
+	maxTTL          time.Duration
+	maxEventsPerSec float64
+	metricsEngine   metrics.MetricsEngine
 }
 
-func NewFilterRegistry(maxFilters int, maxTTL time.Duration, metricsEngine metrics.MetricsEngine) *FilterRegistry {
+func NewFilterRegistry(maxFilters int, maxTTL time.Duration, maxEventsPerSec float64, metricsEngine metrics.MetricsEngine) *FilterRegistry {
 	return &FilterRegistry{
-		byAccount:     make(map[string]map[int32]*storedFilter),
-		maxFilters:    maxFilters,
-		maxTTL:        maxTTL,
-		metricsEngine: metricsEngine,
+		byAccount:       make(map[string]map[int32]*storedFilter),
+		maxFilters:      maxFilters,
+		maxTTL:          maxTTL,
+		maxEventsPerSec: maxEventsPerSec,
+		metricsEngine:   metricsEngine,
 	}
 }
 
@@ -160,14 +164,18 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) error {
 		r.byAccount[filter.AccountId] = accountFilters
 	}
 
-	accountFilters[filter.SessionId] = &storedFilter{
+	sf := &storedFilter{
 		AuctionFilterRequest: filter,
 		mediaTypeSet:         ToMediaTypeSet(filter.MediaTypes),
 	}
+	if r.maxEventsPerSec > 0 {
+		sf.rateLimiter = rate.NewLimiter(rate.Limit(r.maxEventsPerSec), int(r.maxEventsPerSec))
+	}
+	accountFilters[filter.SessionId] = sf
 
 	if !exists {
 		r.count++
-		r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterRegistered, filter.AccountId)
+		r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterRegistered, filter.AccountId, 1)
 	}
 	r.metricsEngine.RecordAuctionAuditActiveFilters(r.count)
 	return nil
@@ -193,30 +201,37 @@ func (r *FilterRegistry) Unregister(sessionId int32, accountId string) {
 	}
 }
 
-func (r *FilterRegistry) GetMatches(accountID, domain, appBundle string, eventMediaTypes MediaTypeSet) []*AuctionFilterRequest {
+// GetMatches returns filters that match AND pass their per-filter rate limiter.
+// dropped is the count of filters that matched but were dropped by rate limiting.
+func (r *FilterRegistry) GetMatches(accountID, domain, appBundle string, eventMediaTypes MediaTypeSet) (allowed []*AuctionFilterRequest, dropped int) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	accountFilters := r.byAccount[accountID]
 	if len(accountFilters) == 0 {
-		return nil
+		return nil, 0
 	}
 
 	now := time.Now().UnixMilli()
-	var matches []*AuctionFilterRequest
 
 	for _, filter := range accountFilters {
-		// Skip expired filters, they'll get cleaned up later
 		if filter.ExpiresAtMs > 0 && filter.ExpiresAtMs < now {
 			continue
 		}
 
-		if filter.matches(domain, appBundle, eventMediaTypes) {
-			matches = append(matches, filter.AuctionFilterRequest)
+		if !filter.matches(domain, appBundle, eventMediaTypes) {
+			continue
 		}
+
+		if filter.rateLimiter != nil && !filter.rateLimiter.Allow() {
+			dropped++
+			continue
+		}
+
+		allowed = append(allowed, filter.AuctionFilterRequest)
 	}
 
-	return matches
+	return allowed, dropped
 }
 
 func (r *FilterRegistry) Count() int {
@@ -251,7 +266,7 @@ func (r *FilterRegistry) cleanupExpired() {
 			if filter.ExpiresAtMs > 0 && filter.ExpiresAtMs < now {
 				delete(accountFilters, sessionId)
 				expiredCount++
-				r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterExpired, filter.AccountId)
+				r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterExpired, filter.AccountId, 1)
 				logger.Infof("[auctionaudit] Filter expired: account=%s session=%d", filter.AccountId, filter.SessionId)
 			}
 		}

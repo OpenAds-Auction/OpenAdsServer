@@ -11,7 +11,7 @@ import (
 )
 
 func createTestHandler() (*filterConsumerHandler, *FilterRegistry) {
-	registry := NewFilterRegistry(100, 1*time.Hour, &metricsConfig.NilMetricsEngine{})
+	registry := NewFilterRegistry(100, 1*time.Hour, 0, &metricsConfig.NilMetricsEngine{})
 	handler := &filterConsumerHandler{
 		registry:      registry,
 		metricsEngine: &metricsConfig.NilMetricsEngine{},

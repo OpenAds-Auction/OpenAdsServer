@@ -9,7 +9,7 @@ import (
 )
 
 func newTestRegistry(maxFilters int) *FilterRegistry {
-	return NewFilterRegistry(maxFilters, 1*time.Hour, &metricsConfig.NilMetricsEngine{})
+	return NewFilterRegistry(maxFilters, 1*time.Hour, 0, &metricsConfig.NilMetricsEngine{})
 }
 
 func TestMediaTypeSet(t *testing.T) {
@@ -82,7 +82,7 @@ func TestFilterRegistry_Register(t *testing.T) {
 	assert.NoError(t, registry.Register(filter2))
 	assert.Equal(t, 1, registry.Count())
 
-	matches := registry.GetMatches("account-123", "updated.com", "", 0)
+	matches, _ := registry.GetMatches("account-123", "updated.com", "", 0)
 	assert.Len(t, matches, 1)
 }
 
@@ -139,10 +139,10 @@ func TestFilterRegistry_GetMatches_AccountIdRequired(t *testing.T) {
 		AccountId: "account-123",
 	})
 
-	matches := registry.GetMatches("account-123", "", "", 0)
+	matches, _ := registry.GetMatches("account-123", "", "", 0)
 	assert.Len(t, matches, 1)
 
-	matches = registry.GetMatches("account-456", "", "", 0)
+	matches, _ = registry.GetMatches("account-456", "", "", 0)
 	assert.Len(t, matches, 0)
 }
 
@@ -155,13 +155,13 @@ func TestFilterRegistry_GetMatches_DomainFilter(t *testing.T) {
 		Domain:    "example.com",
 	})
 
-	matches := registry.GetMatches("account-123", "example.com", "", 0)
+	matches, _ := registry.GetMatches("account-123", "example.com", "", 0)
 	assert.Len(t, matches, 1)
 
-	matches = registry.GetMatches("account-123", "other.com", "", 0)
+	matches, _ = registry.GetMatches("account-123", "other.com", "", 0)
 	assert.Len(t, matches, 0)
 
-	matches = registry.GetMatches("account-123", "", "", 0)
+	matches, _ = registry.GetMatches("account-123", "", "", 0)
 	assert.Len(t, matches, 0)
 }
 
@@ -174,10 +174,10 @@ func TestFilterRegistry_GetMatches_AppBundleFilter(t *testing.T) {
 		AppBundle: "com.example.app",
 	})
 
-	matches := registry.GetMatches("account-123", "", "com.example.app", 0)
+	matches, _ := registry.GetMatches("account-123", "", "com.example.app", 0)
 	assert.Len(t, matches, 1)
 
-	matches = registry.GetMatches("account-123", "", "com.other.app", 0)
+	matches, _ = registry.GetMatches("account-123", "", "com.other.app", 0)
 	assert.Len(t, matches, 0)
 }
 
@@ -190,19 +190,19 @@ func TestFilterRegistry_GetMatches_MediaTypeFilter(t *testing.T) {
 		MediaTypes: []MediaType{MediaType_MEDIA_TYPE_VIDEO, MediaType_MEDIA_TYPE_BANNER},
 	})
 
-	matches := registry.GetMatches("account-123", "", "", MediaTypeVideoBit)
+	matches, _ := registry.GetMatches("account-123", "", "", MediaTypeVideoBit)
 	assert.Len(t, matches, 1)
 
-	matches = registry.GetMatches("account-123", "", "", MediaTypeBannerBit)
+	matches, _ = registry.GetMatches("account-123", "", "", MediaTypeBannerBit)
 	assert.Len(t, matches, 1)
 
-	matches = registry.GetMatches("account-123", "", "", MediaTypeAudioBit)
+	matches, _ = registry.GetMatches("account-123", "", "", MediaTypeAudioBit)
 	assert.Len(t, matches, 0)
 
-	matches = registry.GetMatches("account-123", "", "", MediaTypeAudioBit|MediaTypeVideoBit)
+	matches, _ = registry.GetMatches("account-123", "", "", MediaTypeAudioBit|MediaTypeVideoBit)
 	assert.Len(t, matches, 1)
 
-	matches = registry.GetMatches("account-123", "", "", MediaTypeBannerBit|MediaTypeVideoBit)
+	matches, _ = registry.GetMatches("account-123", "", "", MediaTypeBannerBit|MediaTypeVideoBit)
 	assert.Len(t, matches, 1)
 }
 
@@ -214,13 +214,13 @@ func TestFilterRegistry_GetMatches_NoMediaTypeFilter(t *testing.T) {
 		AccountId: "account-123",
 	})
 
-	matches := registry.GetMatches("account-123", "", "", MediaTypeVideoBit)
+	matches, _ := registry.GetMatches("account-123", "", "", MediaTypeVideoBit)
 	assert.Len(t, matches, 1)
 
-	matches = registry.GetMatches("account-123", "", "", MediaTypeNativeBit)
+	matches, _ = registry.GetMatches("account-123", "", "", MediaTypeNativeBit)
 	assert.Len(t, matches, 1)
 
-	matches = registry.GetMatches("account-123", "", "", 0)
+	matches, _ = registry.GetMatches("account-123", "", "", 0)
 	assert.Len(t, matches, 1)
 }
 
@@ -241,12 +241,12 @@ func TestFilterRegistry_GetMatches_MultipleFiltersPerAccount(t *testing.T) {
 	assert.Equal(t, 2, registry.Count())
 
 	// Event matches first filter only
-	matches := registry.GetMatches("account-123", "example.com", "", 0)
+	matches, _ := registry.GetMatches("account-123", "example.com", "", 0)
 	assert.Len(t, matches, 1)
 	assert.Equal(t, int32(1), matches[0].SessionId)
 
 	// Event matches second filter only
-	matches = registry.GetMatches("account-123", "", "com.example.app", 0)
+	matches, _ = registry.GetMatches("account-123", "", "com.example.app", 0)
 	assert.Len(t, matches, 1)
 	assert.Equal(t, int32(2), matches[0].SessionId)
 }
@@ -264,16 +264,16 @@ func TestFilterRegistry_GetMatches_DifferentAccounts(t *testing.T) {
 	})
 
 	// Only returns filters for the requested account
-	matches := registry.GetMatches("account-123", "", "", 0)
+	matches, _ := registry.GetMatches("account-123", "", "", 0)
 	assert.Len(t, matches, 1)
 	assert.Equal(t, int32(1), matches[0].SessionId)
 
-	matches = registry.GetMatches("account-456", "", "", 0)
+	matches, _ = registry.GetMatches("account-456", "", "", 0)
 	assert.Len(t, matches, 1)
 	assert.Equal(t, int32(2), matches[0].SessionId)
 
 	// No filters for this account
-	matches = registry.GetMatches("account-789", "", "", 0)
+	matches, _ = registry.GetMatches("account-789", "", "", 0)
 	assert.Len(t, matches, 0)
 }
 
@@ -294,7 +294,7 @@ func TestFilterRegistry_GetMatches_ExpiredFilter(t *testing.T) {
 		ExpiresAtMs: time.Now().Add(10 * time.Minute).UnixMilli(),
 	})
 
-	matches := registry.GetMatches("account-123", "", "", 0)
+	matches, _ := registry.GetMatches("account-123", "", "", 0)
 	assert.Len(t, matches, 1)
 	assert.Equal(t, int32(2), matches[0].SessionId)
 }
@@ -308,7 +308,7 @@ func TestFilterRegistry_GetMatches_NoExpiry(t *testing.T) {
 		ExpiresAtMs: 0,
 	})
 
-	matches := registry.GetMatches("account-123", "", "", 0)
+	matches, _ := registry.GetMatches("account-123", "", "", 0)
 	assert.Len(t, matches, 1)
 }
 
@@ -334,7 +334,7 @@ func TestFilterRegistry_CleanupExpired(t *testing.T) {
 	registry.cleanupExpired()
 
 	assert.Equal(t, 1, registry.Count())
-	matches := registry.GetMatches("account-123", "", "", 0)
+	matches, _ := registry.GetMatches("account-123", "", "", 0)
 	assert.Len(t, matches, 1)
 	assert.Equal(t, int32(2), matches[0].SessionId)
 }
@@ -355,7 +355,7 @@ func TestFilterRegistry_CleanupExpired_RemovesEmptyAccountMap(t *testing.T) {
 
 	assert.Equal(t, 0, registry.Count())
 
-	matches := registry.GetMatches("account-123", "", "", 0)
+	matches, _ := registry.GetMatches("account-123", "", "", 0)
 	assert.Len(t, matches, 0)
 }
 
@@ -372,29 +372,29 @@ func TestFilterRegistry_CombinedFilters(t *testing.T) {
 	})
 
 	// All criteria match
-	matches := registry.GetMatches("account-123", "example.com", "com.example.app", MediaTypeVideoBit)
+	matches, _ := registry.GetMatches("account-123", "example.com", "com.example.app", MediaTypeVideoBit)
 	assert.Len(t, matches, 1)
 
 	// Wrong account
-	matches = registry.GetMatches("account-456", "example.com", "com.example.app", MediaTypeVideoBit)
+	matches, _ = registry.GetMatches("account-456", "example.com", "com.example.app", MediaTypeVideoBit)
 	assert.Len(t, matches, 0)
 
 	// Wrong domain
-	matches = registry.GetMatches("account-123", "other.com", "com.example.app", MediaTypeVideoBit)
+	matches, _ = registry.GetMatches("account-123", "other.com", "com.example.app", MediaTypeVideoBit)
 	assert.Len(t, matches, 0)
 
 	// Wrong app bundle
-	matches = registry.GetMatches("account-123", "example.com", "com.other.app", MediaTypeVideoBit)
+	matches, _ = registry.GetMatches("account-123", "example.com", "com.other.app", MediaTypeVideoBit)
 	assert.Len(t, matches, 0)
 
 	// Wrong media type
-	matches = registry.GetMatches("account-123", "example.com", "com.example.app", MediaTypeBannerBit)
+	matches, _ = registry.GetMatches("account-123", "example.com", "com.example.app", MediaTypeBannerBit)
 	assert.Len(t, matches, 0)
 }
 
 func TestFilterRegistry_MaxTTL_CapsExpiration(t *testing.T) {
 	maxTTL := 1 * time.Hour
-	registry := NewFilterRegistry(10, maxTTL, &metricsConfig.NilMetricsEngine{})
+	registry := NewFilterRegistry(10, maxTTL, 0, &metricsConfig.NilMetricsEngine{})
 
 	filter := &AuctionFilterRequest{
 		SessionId:   1,
@@ -411,7 +411,7 @@ func TestFilterRegistry_MaxTTL_CapsExpiration(t *testing.T) {
 
 func TestFilterRegistry_MaxTTL_ZeroExpiration(t *testing.T) {
 	maxTTL := 1 * time.Hour
-	registry := NewFilterRegistry(10, maxTTL, &metricsConfig.NilMetricsEngine{})
+	registry := NewFilterRegistry(10, maxTTL, 0, &metricsConfig.NilMetricsEngine{})
 
 	filter := &AuctionFilterRequest{
 		SessionId:   1,
@@ -428,7 +428,7 @@ func TestFilterRegistry_MaxTTL_ZeroExpiration(t *testing.T) {
 
 func TestFilterRegistry_MaxTTL_ValidExpiration(t *testing.T) {
 	maxTTL := 1 * time.Hour
-	registry := NewFilterRegistry(10, maxTTL, &metricsConfig.NilMetricsEngine{})
+	registry := NewFilterRegistry(10, maxTTL, 0, &metricsConfig.NilMetricsEngine{})
 
 	expectedExpiration := time.Now().Add(30 * time.Minute).UnixMilli()
 	filter := &AuctionFilterRequest{
@@ -440,4 +440,65 @@ func TestFilterRegistry_MaxTTL_ValidExpiration(t *testing.T) {
 	registry.Register(filter)
 
 	assert.InDelta(t, expectedExpiration, filter.ExpiresAtMs, 1000)
+}
+
+func TestFilterRegistry_GetMatches_RateLimitDropsExcess(t *testing.T) {
+	registry := NewFilterRegistry(10, time.Hour, 1, &metricsConfig.NilMetricsEngine{})
+
+	registry.Register(&AuctionFilterRequest{
+		SessionId:   1,
+		AccountId:   "account-123",
+		ExpiresAtMs: time.Now().Add(time.Hour).UnixMilli(),
+	})
+
+	// First call: burst of 1 allows it
+	allowed, dropped := registry.GetMatches("account-123", "", "", 0)
+	assert.Len(t, allowed, 1)
+	assert.Equal(t, 0, dropped)
+
+	// Second call: token exhausted
+	allowed, dropped = registry.GetMatches("account-123", "", "", 0)
+	assert.Len(t, allowed, 0)
+	assert.Equal(t, 1, dropped)
+}
+
+func TestFilterRegistry_GetMatches_RateLimitIndependentPerFilter(t *testing.T) {
+	registry := NewFilterRegistry(10, time.Hour, 1, &metricsConfig.NilMetricsEngine{})
+
+	registry.Register(&AuctionFilterRequest{
+		SessionId:   1,
+		AccountId:   "account-123",
+		ExpiresAtMs: time.Now().Add(time.Hour).UnixMilli(),
+	})
+	registry.Register(&AuctionFilterRequest{
+		SessionId:   2,
+		AccountId:   "account-123",
+		ExpiresAtMs: time.Now().Add(time.Hour).UnixMilli(),
+	})
+
+	// First call: both filters pass
+	allowed, dropped := registry.GetMatches("account-123", "", "", 0)
+	assert.Len(t, allowed, 2)
+	assert.Equal(t, 0, dropped)
+
+	// Second call: both rate-limited
+	allowed, dropped = registry.GetMatches("account-123", "", "", 0)
+	assert.Len(t, allowed, 0)
+	assert.Equal(t, 2, dropped)
+}
+
+func TestFilterRegistry_GetMatches_NoRateLimitWhenZero(t *testing.T) {
+	registry := NewFilterRegistry(10, time.Hour, 0, &metricsConfig.NilMetricsEngine{})
+
+	registry.Register(&AuctionFilterRequest{
+		SessionId:   1,
+		AccountId:   "account-123",
+		ExpiresAtMs: time.Now().Add(time.Hour).UnixMilli(),
+	})
+
+	for i := 0; i < 20; i++ {
+		allowed, dropped := registry.GetMatches("account-123", "", "", 0)
+		assert.Len(t, allowed, 1)
+		assert.Equal(t, 0, dropped)
+	}
 }

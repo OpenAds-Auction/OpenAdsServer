@@ -2087,3 +2087,25 @@ func TestRecordModuleMetrics(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordAuctionAuditMetric(t *testing.T) {
+	m := createMetricsForTesting()
+
+	matchedInc := 5
+	droppedInc := 3
+	m.RecordAuctionAudit(metrics.AuctionAuditEventMatched, "testaccount", matchedInc)
+	m.RecordAuctionAudit(metrics.AuctionAuditEventDropped, "testaccount", droppedInc)
+
+	assertCounterVecValue(t, "", "auctionAuditActions:event_matched", m.auctionAuditActions,
+		float64(matchedInc),
+		prometheus.Labels{
+			actionLabel:  string(metrics.AuctionAuditEventMatched),
+			accountLabel: "testaccount",
+		})
+	assertCounterVecValue(t, "", "auctionAuditActions:event_dropped", m.auctionAuditActions,
+		float64(droppedInc),
+		prometheus.Labels{
+			actionLabel:  string(metrics.AuctionAuditEventDropped),
+			accountLabel: "testaccount",
+		})
+}

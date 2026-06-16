@@ -733,7 +733,7 @@ func (me *Metrics) RecordS3Analytics(destination AnalyticsDestination, status S3
 	}
 }
 
-func (me *Metrics) RecordAuctionAudit(action AuctionAuditAction, account string) {
+func (me *Metrics) RecordAuctionAudit(action AuctionAuditAction, account string, inc int) {
 	// go-metrics doesn't support this metric - no-op
 }
 
