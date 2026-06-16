@@ -390,9 +390,9 @@ func (me *MultiMetricsEngine) RecordS3Analytics(destination metrics.AnalyticsDes
 	}
 }
 
-func (me *MultiMetricsEngine) RecordAuctionAudit(action metrics.AuctionAuditAction, account string) {
+func (me *MultiMetricsEngine) RecordAuctionAudit(action metrics.AuctionAuditAction, account string, inc int) {
 	for _, thisME := range *me {
-		thisME.RecordAuctionAudit(action, account)
+		thisME.RecordAuctionAudit(action, account, inc)
 	}
 }
 
@@ -606,7 +606,7 @@ func (me *NilMetricsEngine) RecordAdapterThrottled(adapter openrtb_ext.BidderNam
 func (me *NilMetricsEngine) RecordS3Analytics(destination metrics.AnalyticsDestination, status metrics.S3UploadStatus) {
 }
 
-func (me *NilMetricsEngine) RecordAuctionAudit(action metrics.AuctionAuditAction, account string) {
+func (me *NilMetricsEngine) RecordAuctionAudit(action metrics.AuctionAuditAction, account string, inc int) {
 }
 
 func (me *NilMetricsEngine) RecordAuctionAuditError(reason metrics.AuctionAuditErrorReason) {

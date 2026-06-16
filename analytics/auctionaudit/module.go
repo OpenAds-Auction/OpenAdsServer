@@ -92,8 +92,8 @@ func (m *AuctionAuditModule) LogAuctionObject(ao *analytics.AuctionObject) {
 	mediaTypeSet := MediaTypeSetFromImps(req.Imp)
 	filters, dropped := m.filterRegistry.GetMatches(accountID, domain, appBundle, mediaTypeSet)
 
-	for range dropped {
-		m.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditEventDropped, accountID)
+	if dropped > 0 {
+		m.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditEventDropped, accountID, dropped)
 	}
 
 	if len(filters) == 0 {
@@ -108,9 +108,7 @@ func (m *AuctionAuditModule) LogAuctionObject(ao *analytics.AuctionObject) {
 		return
 	}
 
-	for range filters {
-		m.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditEventMatched, accountID)
-	}
+	m.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditEventMatched, accountID, len(filters))
 }
 
 func (m *AuctionAuditModule) Shutdown() {

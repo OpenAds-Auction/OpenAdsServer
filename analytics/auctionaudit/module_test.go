@@ -134,7 +134,7 @@ func registerTestFilter(t *testing.T, registry *FilterRegistry) {
 
 func TestLogAuctionObject_RateLimiterDisabled_AllEventsPass(t *testing.T) {
 	me := &metrics.MetricsEngineMock{}
-	me.On("RecordAuctionAudit", mock.Anything, mock.Anything).Return()
+	me.On("RecordAuctionAudit", mock.Anything, mock.Anything, mock.Anything).Return()
 	me.On("RecordAuctionAuditActiveFilters", mock.Anything).Return()
 
 	module := newTestModule(t, me, 0)
@@ -144,13 +144,13 @@ func TestLogAuctionObject_RateLimiterDisabled_AllEventsPass(t *testing.T) {
 
 	module.LogAuctionObject(newTestAuctionObject())
 
-	me.AssertCalled(t, "RecordAuctionAudit", metrics.AuctionAuditEventMatched, "testaccount")
-	me.AssertNotCalled(t, "RecordAuctionAudit", metrics.AuctionAuditEventDropped, mock.Anything)
+	me.AssertCalled(t, "RecordAuctionAudit", metrics.AuctionAuditEventMatched, "testaccount", 1)
+	me.AssertNotCalled(t, "RecordAuctionAudit", metrics.AuctionAuditEventDropped, mock.Anything, mock.Anything)
 }
 
 func TestLogAuctionObject_PerFilterRateLimit_DropsExcessEvents(t *testing.T) {
 	me := &metrics.MetricsEngineMock{}
-	me.On("RecordAuctionAudit", mock.Anything, mock.Anything).Return()
+	me.On("RecordAuctionAudit", mock.Anything, mock.Anything, mock.Anything).Return()
 	me.On("RecordAuctionAuditActiveFilters", mock.Anything).Return()
 
 	module := newTestModule(t, me, 1)
@@ -166,11 +166,12 @@ func TestLogAuctionObject_PerFilterRateLimit_DropsExcessEvents(t *testing.T) {
 	for _, call := range me.Calls {
 		if call.Method == "RecordAuctionAudit" {
 			action := call.Arguments.Get(0).(metrics.AuctionAuditAction)
+			count := call.Arguments.Get(2).(int)
 			if action == metrics.AuctionAuditEventMatched {
-				matchedCalls++
+				matchedCalls += count
 			}
 			if action == metrics.AuctionAuditEventDropped {
-				sampledCalls++
+				sampledCalls += count
 			}
 		}
 	}
@@ -185,11 +186,12 @@ func TestLogAuctionObject_PerFilterRateLimit_DropsExcessEvents(t *testing.T) {
 	for _, call := range me.Calls {
 		if call.Method == "RecordAuctionAudit" {
 			action := call.Arguments.Get(0).(metrics.AuctionAuditAction)
+			count := call.Arguments.Get(2).(int)
 			if action == metrics.AuctionAuditEventMatched {
-				matchedCalls++
+				matchedCalls += count
 			}
 			if action == metrics.AuctionAuditEventDropped {
-				sampledCalls++
+				sampledCalls += count
 			}
 		}
 	}
@@ -199,7 +201,7 @@ func TestLogAuctionObject_PerFilterRateLimit_DropsExcessEvents(t *testing.T) {
 
 func TestLogAuctionObject_PerFilterRateLimit_IndependentPerFilter(t *testing.T) {
 	me := &metrics.MetricsEngineMock{}
-	me.On("RecordAuctionAudit", mock.Anything, mock.Anything).Return()
+	me.On("RecordAuctionAudit", mock.Anything, mock.Anything, mock.Anything).Return()
 	me.On("RecordAuctionAuditActiveFilters", mock.Anything).Return()
 
 	module := newTestModule(t, me, 1)
@@ -231,11 +233,12 @@ func TestLogAuctionObject_PerFilterRateLimit_IndependentPerFilter(t *testing.T) 
 	for _, call := range me.Calls {
 		if call.Method == "RecordAuctionAudit" {
 			action := call.Arguments.Get(0).(metrics.AuctionAuditAction)
+			count := call.Arguments.Get(2).(int)
 			if action == metrics.AuctionAuditEventMatched {
-				matchedCalls++
+				matchedCalls += count
 			}
 			if action == metrics.AuctionAuditEventDropped {
-				sampledCalls++
+				sampledCalls += count
 			}
 		}
 	}
@@ -250,11 +253,12 @@ func TestLogAuctionObject_PerFilterRateLimit_IndependentPerFilter(t *testing.T) 
 	for _, call := range me.Calls {
 		if call.Method == "RecordAuctionAudit" {
 			action := call.Arguments.Get(0).(metrics.AuctionAuditAction)
+			count := call.Arguments.Get(2).(int)
 			if action == metrics.AuctionAuditEventMatched {
-				matchedCalls++
+				matchedCalls += count
 			}
 			if action == metrics.AuctionAuditEventDropped {
-				sampledCalls++
+				sampledCalls += count
 			}
 		}
 	}
@@ -269,7 +273,7 @@ func TestLogAuctionObject_ZeroConfig_NoRateLimiting(t *testing.T) {
 	registry.mu.RUnlock()
 
 	me := &metrics.MetricsEngineMock{}
-	me.On("RecordAuctionAudit", mock.Anything, mock.Anything).Return()
+	me.On("RecordAuctionAudit", mock.Anything, mock.Anything, mock.Anything).Return()
 	me.On("RecordAuctionAuditActiveFilters", mock.Anything).Return()
 
 	module := newTestModule(t, me, 0)

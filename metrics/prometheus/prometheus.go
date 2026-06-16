@@ -1189,11 +1189,11 @@ func (m *Metrics) RecordS3Analytics(destination metrics.AnalyticsDestination, st
 	}).Inc()
 }
 
-func (m *Metrics) RecordAuctionAudit(action metrics.AuctionAuditAction, account string) {
+func (m *Metrics) RecordAuctionAudit(action metrics.AuctionAuditAction, account string, inc int) {
 	m.auctionAuditActions.With(prometheus.Labels{
 		actionLabel:  string(action),
 		accountLabel: account,
-	}).Inc()
+	}).Add(float64(inc))
 }
 
 func (m *Metrics) RecordAuctionAuditError(reason metrics.AuctionAuditErrorReason) {

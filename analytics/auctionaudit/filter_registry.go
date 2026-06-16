@@ -175,7 +175,7 @@ func (r *FilterRegistry) Register(filter *AuctionFilterRequest) error {
 
 	if !exists {
 		r.count++
-		r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterRegistered, filter.AccountId)
+		r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterRegistered, filter.AccountId, 1)
 	}
 	r.metricsEngine.RecordAuctionAuditActiveFilters(r.count)
 	return nil
@@ -266,7 +266,7 @@ func (r *FilterRegistry) cleanupExpired() {
 			if filter.ExpiresAtMs > 0 && filter.ExpiresAtMs < now {
 				delete(accountFilters, sessionId)
 				expiredCount++
-				r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterExpired, filter.AccountId)
+				r.metricsEngine.RecordAuctionAudit(metrics.AuctionAuditFilterExpired, filter.AccountId, 1)
 				logger.Infof("[auctionaudit] Filter expired: account=%s session=%d", filter.AccountId, filter.SessionId)
 			}
 		}
