@@ -45,43 +45,9 @@ COPY ./ ./
 
 # Regenerate vendor directory to ensure consistency
 RUN go mod vendor
-
-# Generate modules and build with deterministic flags
-RUN go generate modules/modules.go
-# Generate cryptographic signature for build attestation
-RUN COMMIT_HASH=$(git rev-parse HEAD) && \
-    TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
-    echo "Generating build signature for commit: $COMMIT_HASH at $TIMESTAMP" && \
-    openssl genrsa -out build_key.pem 2048 && \
-    openssl rsa -in build_key.pem -pubout -out build_key.pub && \
-    PAYLOAD="${COMMIT_HASH}:${TIMESTAMP}:openads-server-build" && \
-    echo "Signing payload: $PAYLOAD" && \
-    echo -n "$PAYLOAD" | openssl dgst -sha256 -sign build_key.pem -out signature.bin && \
-    SIGNATURE=$(base64 -w 0 signature.bin) && \
-    echo "=== BUILD ATTESTATION PUBLIC KEY ===" && \
-    cat build_key.pub && \
-    echo "=== END PUBLIC KEY ===" && \
-    echo "=== BUILD SIGNATURE (BASE64) ===" && \
-    echo "$SIGNATURE" && \
-    echo "=== END SIGNATURE ===" && \
-    echo "=== SIGNATURE PAYLOAD (PLAINTEXT) ===" && \
-    echo "$PAYLOAD" && \
-    echo "=== END PAYLOAD ===" && \
-    echo "=== VERIFICATION INFO ===" && \
-    echo "Git Commit: $COMMIT_HASH" && \
-    echo "Build Timestamp: $TIMESTAMP" && \
-    echo "Payload Format: <commit-hash>:<timestamp>:openads-server-build" && \
-    echo "=== END VERIFICATION INFO ===" && \
-    # Create artifacts directory and save only the public key \
-    mkdir -p /artifacts && \
-    cp build_key.pub /artifacts/build_key.pub && \
-    rm -f build_key.pem signature.bin && \
-    go build \
-        -mod=vendor \
-        -trimpath \
-        -buildmode=pie \
-        -ldflags "-s -w -X github.com/prebid/prebid-server/v3/version.Ver=`git describe --tags | sed 's/^v//'` -X github.com/prebid/prebid-server/v3/version.Rev=`git rev-parse HEAD` -X github.com/prebid/prebid-server/v3/version.BuildSignature=${SIGNATURE} -X github.com/prebid/prebid-server/v3/version.BuildTimestamp=${TIMESTAMP}" \
-        -o openads .
+ARG TEST="true"
+RUN if [ "$TEST" != "false" ]; then ./validate.sh ; fi
+RUN go build -mod=vendor -ldflags "-X github.com/prebid/prebid-server/v4/version.Ver=`git describe --tags | sed 's/^v//'` -X github.com/prebid/prebid-server/v4/version.Rev=`git rev-parse HEAD`" .
 
 FROM ubuntu:22.04 AS release
 LABEL org.opencontainers.image.authors="openads-eng@thetradedesk.com"
