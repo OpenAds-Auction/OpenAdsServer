@@ -10,6 +10,7 @@ require (
 	github.com/IABTechLab/adscert v0.34.0
 	github.com/IBM/sarama v1.46.0
 	github.com/NYTimes/gziphandler v1.1.1
+	github.com/WURFL/golang-wurfl v1.30.3
 	github.com/alitto/pond v1.8.3
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go-v2 v1.39.2
@@ -39,7 +40,7 @@ require (
 	github.com/rs/cors v1.11.0
 	github.com/spf13/cast v1.5.0
 	github.com/spf13/viper v1.12.0
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.17.1
 	github.com/tidwall/sjson v1.2.5
 	github.com/vrischmann/go-metrics-influxdb v0.1.1
