@@ -10,5 +10,5 @@ capabilities:
 gvlVendorID: 1162
 userSync:
   redirect:
-    url: https://sync.resetdigital.co/csync?redir={{.RedirectURL}}
-    userMacro: '$USER_ID'
+    url: "https://sync.resetdigital.co/usersync?gdpr={{.GDPR}}&gdpr_consent={{.GDPRConsent}}&us_privacy={{.USPrivacy}}&redirect={{.RedirectURL}}"
+    userMacro: "$UID"
