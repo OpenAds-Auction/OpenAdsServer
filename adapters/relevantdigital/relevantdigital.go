@@ -10,12 +10,13 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/prebid/openrtb/v20/openrtb2"
-	"github.com/prebid/prebid-server/v3/adapters"
-	"github.com/prebid/prebid-server/v3/config"
-	"github.com/prebid/prebid-server/v3/errortypes"
-	"github.com/prebid/prebid-server/v3/macros"
-	"github.com/prebid/prebid-server/v3/openrtb_ext"
-	"github.com/prebid/prebid-server/v3/util/jsonutil"
+	"github.com/prebid/prebid-server/v4/adapters"
+	"github.com/prebid/prebid-server/v4/config"
+	"github.com/prebid/prebid-server/v4/errortypes"
+	"github.com/prebid/prebid-server/v4/macros"
+	"github.com/prebid/prebid-server/v4/openrtb_ext"
+	"github.com/prebid/prebid-server/v4/util/jsonutil"
+	"github.com/prebid/prebid-server/v4/util/urlutil"
 	jsonpatch "gopkg.in/evanphx/json-patch.v5"
 )
 
@@ -177,6 +178,9 @@ func (a *adapter) buildEndpointURL(params *openrtb_ext.ExtRelevantDigital) (stri
 	params.Host = strings.ReplaceAll(params.Host, "http://", "")
 	params.Host = strings.ReplaceAll(params.Host, "https://", "")
 	params.Host = strings.ReplaceAll(params.Host, relevant_domain, "")
+	if !urlutil.IsSafeHost(params.Host) {
+		return "", &errortypes.BadInput{Message: "Invalid Host"}
+	}
 
 	endpointParams := macros.EndpointTemplateParams{Host: params.Host}
 	return macros.ResolveMacros(a.endpoint, endpointParams)
