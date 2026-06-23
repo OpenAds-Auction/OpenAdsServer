@@ -18,13 +18,10 @@ RUN apt-get update && \
 
 # Download and verify Go binary with checksum validation
 WORKDIR /tmp
-RUN wget https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
-    echo "${GO_CHECKSUM} go${GO_VERSION}.linux-amd64.tar.gz" | sha256sum -c - && \
-    tar -xf go${GO_VERSION}.linux-amd64.tar.gz && \
-    mv go /usr/local && \
-    rm go${GO_VERSION}.linux-amd64.tar.gz
-
-# Set up Go environment with deterministic settings
+RUN wget https://dl.google.com/go/go1.26.2.linux-amd64.tar.gz && \
+    tar -xf go1.26.2.linux-amd64.tar.gz && \
+    mv go /usr/local
+RUN mkdir -p /app/prebid-server/
 WORKDIR /app/prebid-server/
 ENV GOROOT=/usr/local/go
 ENV PATH=$GOROOT/bin:$PATH

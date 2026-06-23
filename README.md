@@ -62,7 +62,7 @@ Refer to the [configuration guide](docs/developers/configuration.md) for additio
 
 ## Developing
 
-OpenAds Server requires [Go](https://go.dev) version 1.23 or newer. You can develop on any operating system that Go supports; however, please note that our helper scripts are written in bash.
+Prebid Server requires [Go](https://go.dev) version 1.26.2 or newer. You can develop on any operating system that Go supports; however, please note that our helper scripts are written in bash.
 
 1. Clone The Repository
 ``` bash
