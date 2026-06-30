@@ -39,6 +39,7 @@ import (
 	"github.com/prebid/prebid-server/v3/usersync"
 	"github.com/prebid/prebid-server/v3/util/jsonutil"
 	"github.com/prebid/prebid-server/v3/util/maputil"
+	"github.com/prebid/prebid-server/v3/vast/collate"
 
 	"github.com/buger/jsonparser"
 	"github.com/gofrs/uuid"
@@ -264,6 +265,12 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 	}
 
 	cacheInstructions := getExtCacheInstructions(requestExtPrebid)
+	collatedVast := requestExtPrebid.Cache != nil && requestExtPrebid.Cache.CollatedVast != nil
+	collateReturnBids := !collatedVast || (requestExtPrebid.Cache.CollatedVast.ReturnBids != nil && *requestExtPrebid.Cache.CollatedVast.ReturnBids)
+	if collatedVast && !collateReturnBids {
+		cacheInstructions.cacheBids = false
+		cacheInstructions.cacheVAST = false
+	}
 	if e.disableBidCaching {
 		cacheInstructions.cacheBids = false
 		cacheInstructions.returnCreativeBids = true
@@ -345,6 +352,9 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 		if errortypes.ReadCode(err) == errortypes.InvalidImpFirstPartyDataErrorCode {
 			return nil, err
 		}
+	}
+	if collatedVast {
+		requestExtPrebid.MultiBid = requestExtLegacy.Prebid.MultiBid
 	}
 	errs = append(errs, floorErrs...)
 
@@ -544,6 +554,15 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 	bidResponse := e.buildBidResponse(ctx, liveAdapters, adapterBids, r.BidRequestWrapper, adapterExtra, auc, bidResponseExt, cacheInstructions.returnCreativeBids, cacheInstructions.returnCreativeVast, r.ImpExtInfoMap, r.PubID, errs, &seatNonBidBuilder)
 	bidResponse = adservertargeting.Apply(r.BidRequestWrapper, r.ResolvedBidRequest, bidResponse, r.QueryParams, bidResponseExt, r.Account.TruncateTargetAttribute)
 
+	if collatedVast {
+		if anyBidsReturned {
+			e.applyCollatedVast(ctx, adapterBids, r.BidRequestWrapper.BidRequest.Imp, &r.Account, bidResponseExt)
+		}
+		if !collateReturnBids {
+			bidResponse.SeatBid = nil
+		}
+	}
+
 	bidResponse.Ext, err = encodeBidResponseExt(bidResponseExt)
 	if err != nil {
 		return nil, err
@@ -554,6 +573,90 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 		BidResponse:    bidResponse,
 		ExtBidResponse: bidResponseExt,
 	}, nil
+}
+
+func (e *exchange) applyCollatedVast(ctx context.Context, adapterBids map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid, imps []openrtb2.Imp, account *config.Account, bidResponseExt *openrtb_ext.ExtBidResponse) {
+	var vastInputs []collate.BidInput
+	for bidderName, seatBid := range adapterBids {
+		if seatBid == nil {
+			continue
+		}
+		for _, pbsBid := range seatBid.Bids {
+			if pbsBid.BidType != openrtb_ext.BidTypeVideo {
+				continue
+			}
+			bid := pbsBid.Bid
+			if bid.AdM == "" {
+				continue
+			}
+			vastInputs = append(vastInputs, collate.BidInput{
+				BidID:       bid.ID,
+				ImpID:       bid.ImpID,
+				Seat:        bidderName.String(),
+				Price:       bid.Price,
+				ADomain:     bid.ADomain,
+				Cat:         bid.Cat,
+				AdM:         bid.AdM,
+				BidExp:      bid.Exp,
+				AdapterName: bidderName,
+			})
+		}
+	}
+
+	if len(vastInputs) == 0 {
+		return
+	}
+
+	collated := collate.VAST(vastInputs, e.me)
+
+	if collated.VastXML != "" {
+		expByImp := make(map[string]int64)
+		for _, imp := range imps {
+			expByImp[imp.ID] = imp.Exp
+		}
+		videoDefTTL := defTTL(openrtb_ext.BidTypeVideo, &account.CacheTTL)
+		var minTTL int64
+		for _, input := range vastInputs {
+			bidTTL := cacheTTL(expByImp[input.ImpID], input.BidExp, videoDefTTL, 60)
+			if bidTTL > 0 && (minTTL == 0 || bidTTL < minTTL) {
+				minTTL = bidTTL
+			}
+		}
+
+		if vastBytes, marshalErr := jsonutil.Marshal(collated.VastXML); marshalErr == nil {
+			uuids, cacheErrs := e.cache.PutJson(ctx, []prebid_cache_client.Cacheable{{
+				Type:       prebid_cache_client.TypeXML,
+				Data:       vastBytes,
+				TTLSeconds: minTTL,
+			}})
+			if len(cacheErrs) > 0 {
+				for _, ce := range cacheErrs {
+					bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral] = append(
+						bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral],
+						openrtb_ext.ExtBidderMessage{Message: "collated_vast cache: " + ce.Error()},
+					)
+				}
+			}
+			if len(uuids) > 0 && uuids[0] != "" {
+				if bidResponseExt.Prebid == nil {
+					bidResponseExt.Prebid = &openrtb_ext.ExtResponsePrebid{}
+				}
+				bidResponseExt.Prebid.Cache = &openrtb_ext.ExtResponsePrebidCache{
+					CollatedVast: &openrtb_ext.ExtResponseCollatedVastCache{
+						Key: uuids[0],
+						URL: buildCacheURL(e.cache, uuids[0]),
+					},
+				}
+			}
+		}
+	}
+
+	for _, collErr := range collated.Errors {
+		bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral] = append(
+			bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral],
+			openrtb_ext.ExtBidderMessage{Message: "collated_vast: " + collErr.Error()},
+		)
+	}
 }
 
 // getBidderPreferredMediaType reads the preferred media type from the request and account and returns a map of bidder to preferred media type. Preference given to the request over account.

@@ -842,6 +842,12 @@ func (m *Metrics) RecordAdapterConnectionDialTime(adapterName openrtb_ext.Bidder
 	m.AdapterMetrics[strings.ToLower(string(adapterName))].ConnDialTime.Update(dialStartTime)
 }
 
+func (m *Metrics) RecordCollatedVastVersionMismatch(adapterName openrtb_ext.BidderName) {
+}
+
+func (m *Metrics) RecordCollatedVastMissingMetadata(adapterName openrtb_ext.BidderName) {
+}
+
 func (me *Metrics) RecordDNSTime(dnsLookupTime time.Duration) {
 	me.DNSLookupTimer.Update(dnsLookupTime)
 }

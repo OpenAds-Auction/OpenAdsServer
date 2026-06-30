@@ -80,6 +80,10 @@ func (rs *requestSplitter) cleanOpenRTBRequests(ctx context.Context,
 		return
 	}
 
+	if requestExt != nil && requestExt.Prebid.Cache != nil && requestExt.Prebid.Cache.CollatedVast != nil {
+		ensureCollatedVastMultiBid(requestExt, impsByBidder)
+	}
+
 	explicitBuyerUIDs, err := extractAndCleanBuyerUIDs(req)
 	if err != nil {
 		errs = []error{err}
@@ -1199,5 +1203,31 @@ func applyBidAdjustmentToFloor(req *openrtb_ext.RequestWrapper, bidder string, a
 			imp.BidFloor = imp.BidFloor / bidAdjustment
 			req.Imp[index] = imp
 		}
+	}
+}
+
+const collatedVastDefaultMaxBids = 20
+
+func ensureCollatedVastMultiBid(requestExt *openrtb_ext.ExtRequest, impsByBidder map[string][]openrtb2.Imp) {
+	existing := make(map[string]bool)
+	for _, mb := range requestExt.Prebid.MultiBid {
+		if mb.Bidder != "" {
+			existing[mb.Bidder] = true
+		}
+		for _, b := range mb.Bidders {
+			existing[b] = true
+		}
+	}
+
+	for bidder := range impsByBidder {
+		if existing[bidder] {
+			continue
+		}
+		maxBids := collatedVastDefaultMaxBids
+		requestExt.Prebid.MultiBid = append(requestExt.Prebid.MultiBid, &openrtb_ext.ExtMultiBid{
+			Bidder:  bidder,
+			MaxBids: &maxBids,
+		})
+		existing[bidder] = true
 	}
 }

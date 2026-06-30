@@ -860,6 +860,17 @@ func (deps *endpointDeps) validateRequest(account *config.Account, httpReq *http
 		return []error{err}
 	}
 
+	if reqPrebid != nil && reqPrebid.Cache != nil && reqPrebid.Cache.CollatedVast != nil {
+		if len(req.GetImp()) > 1 {
+			return []error{fmt.Errorf("request must contain exactly one impression when collatedvast is enabled, got %d", len(req.GetImp()))}
+		}
+		for i, imp := range req.GetImp() {
+			if imp.Video == nil {
+				return []error{fmt.Errorf("request.imp[%d] must have a video object when collatedvast is enabled", i)}
+			}
+		}
+	}
+
 	if reqPrebid != nil {
 		requestAliases = reqPrebid.Aliases
 
@@ -1155,8 +1166,8 @@ func validateRequestExt(req *openrtb_ext.RequestWrapper) []error {
 	}
 
 	if prebid.Cache != nil {
-		if prebid.Cache.Bids == nil && prebid.Cache.VastXML == nil {
-			return []error{errors.New(`request.ext is invalid: request.ext.prebid.cache requires one of the "bids" or "vastxml" properties`)}
+		if prebid.Cache.Bids == nil && prebid.Cache.VastXML == nil && prebid.Cache.CollatedVast == nil {
+			return []error{errors.New(`request.ext is invalid: request.ext.prebid.cache requires one of the "bids", "vastxml", or "collatedvast" properties`)}
 		}
 	}
 

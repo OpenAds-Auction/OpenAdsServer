@@ -173,8 +173,14 @@ type ExtRequestPrebidChannel struct {
 
 // ExtRequestPrebidCache defines the contract for bidrequest.ext.prebid.cache
 type ExtRequestPrebidCache struct {
-	Bids    *ExtRequestPrebidCacheBids `json:"bids,omitempty"`
-	VastXML *ExtRequestPrebidCacheVAST `json:"vastxml,omitempty"`
+	Bids         *ExtRequestPrebidCacheBids         `json:"bids,omitempty"`
+	VastXML      *ExtRequestPrebidCacheVAST         `json:"vastxml,omitempty"`
+	CollatedVast *ExtRequestPrebidCacheCollatedVast `json:"collatedvast,omitempty"`
+}
+
+// ExtRequestPrebidCacheCollatedVast defines the contract for bidrequest.ext.prebid.cache.collatedvast
+type ExtRequestPrebidCacheCollatedVast struct {
+	ReturnBids *bool `json:"returnbids,omitempty"`
 }
 
 type ExtRequestPrebidServer struct {
@@ -441,6 +447,10 @@ func (erp *ExtRequestPrebid) Clone() *ExtRequestPrebid {
 		if erp.Cache.VastXML != nil {
 			clone.Cache.VastXML = &ExtRequestPrebidCacheVAST{}
 			clone.Cache.VastXML.ReturnCreative = ptrutil.Clone(erp.Cache.VastXML.ReturnCreative)
+		}
+		if erp.Cache.CollatedVast != nil {
+			clone.Cache.CollatedVast = &ExtRequestPrebidCacheCollatedVast{}
+			clone.Cache.CollatedVast.ReturnBids = ptrutil.Clone(erp.Cache.CollatedVast.ReturnBids)
 		}
 	}
 

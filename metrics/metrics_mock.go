@@ -258,3 +258,11 @@ func (me *MetricsEngineMock) RecordAdapterConnectionDialError(adapterName openrt
 func (me *MetricsEngineMock) RecordAdapterConnectionDialTime(adapterName openrtb_ext.BidderName, dialStartTime time.Duration) {
 	me.Called(adapterName, dialStartTime)
 }
+
+func (me *MetricsEngineMock) RecordCollatedVastVersionMismatch(adapterName openrtb_ext.BidderName) {
+	me.Called(adapterName)
+}
+
+func (me *MetricsEngineMock) RecordCollatedVastMissingMetadata(adapterName openrtb_ext.BidderName) {
+	me.Called(adapterName)
+}

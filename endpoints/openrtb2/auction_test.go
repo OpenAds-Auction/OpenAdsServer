@@ -1973,12 +1973,12 @@ func TestValidateRequestExt(t *testing.T) {
 		{
 			description:     "prebid cache - empty",
 			givenRequestExt: json.RawMessage(`{"prebid":{"cache":{}}}`),
-			expectedErrors:  []string{`request.ext is invalid: request.ext.prebid.cache requires one of the "bids" or "vastxml" properties`},
+			expectedErrors:  []string{`request.ext is invalid: request.ext.prebid.cache requires one of the "bids", "vastxml", or "collatedvast" properties`},
 		},
 		{
 			description:     "prebid cache - bids - null",
 			givenRequestExt: json.RawMessage(`{"prebid":{"cache":{"bids":null}}}`),
-			expectedErrors:  []string{`request.ext is invalid: request.ext.prebid.cache requires one of the "bids" or "vastxml" properties`},
+			expectedErrors:  []string{`request.ext is invalid: request.ext.prebid.cache requires one of the "bids", "vastxml", or "collatedvast" properties`},
 		},
 		{
 			description:     "prebid cache - bids - wrong type",
@@ -1992,7 +1992,7 @@ func TestValidateRequestExt(t *testing.T) {
 		{
 			description:     "prebid cache - vastxml - null",
 			givenRequestExt: json.RawMessage(`{"prebid": {"cache": {"vastxml": null}}}`),
-			expectedErrors:  []string{`request.ext is invalid: request.ext.prebid.cache requires one of the "bids" or "vastxml" properties`},
+			expectedErrors:  []string{`request.ext is invalid: request.ext.prebid.cache requires one of the "bids", "vastxml", or "collatedvast" properties`},
 		},
 		{
 			description:     "prebid cache - vastxml - wrong type",

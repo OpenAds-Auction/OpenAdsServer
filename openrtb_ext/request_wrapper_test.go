@@ -2542,6 +2542,62 @@ func TestRequestExtUseOpenAdsExtKey(t *testing.T) {
 	})
 }
 
+func TestRequestExtOpenAdsFields(t *testing.T) {
+	t.Run("collatedvast under ext.openads.cache", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"openads":{"cache":{"collatedvast":{}}}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.NotNil(t, prebid.Cache)
+		assert.NotNil(t, prebid.Cache.CollatedVast)
+	})
+
+	t.Run("collatedvast with returnbids false", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"openads":{"cache":{"collatedvast":{"returnbids":false}}}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.NotNil(t, prebid.Cache.CollatedVast)
+		assert.NotNil(t, prebid.Cache.CollatedVast.ReturnBids)
+		assert.False(t, *prebid.Cache.CollatedVast.ReturnBids)
+	})
+
+	t.Run("absent cache returns nil", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"openads":{"debug":true}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.Nil(t, prebid.Cache, "cache should be nil when absent")
+	})
+
+	t.Run("fields under ext.prebid also work", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"prebid":{"cache":{"collatedvast":{"returnbids":false}}}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.NotNil(t, prebid.Cache.CollatedVast)
+		assert.NotNil(t, prebid.Cache.CollatedVast.ReturnBids)
+		assert.False(t, *prebid.Cache.CollatedVast.ReturnBids)
+	})
+
+	t.Run("empty ext returns nil prebid", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.Nil(t, prebid)
+	})
+
+	t.Run("both keys present, openads wins", func(t *testing.T) {
+		re := &RequestExt{}
+		err := re.unmarshal([]byte(`{"prebid":{"cache":{"collatedvast":{"returnbids":true}}},"openads":{"cache":{"collatedvast":{"returnbids":false}}}}`))
+		assert.NoError(t, err)
+		prebid := re.GetPrebid()
+		assert.NotNil(t, prebid.Cache.CollatedVast.ReturnBids)
+		assert.False(t, *prebid.Cache.CollatedVast.ReturnBids, "openads key should take precedence")
+	})
+}
+
 func TestImpExtOpenAdsAlias(t *testing.T) {
 	t.Run("openads decodes into prebid and marshals as prebid", func(t *testing.T) {
 		ie := &ImpExt{}
