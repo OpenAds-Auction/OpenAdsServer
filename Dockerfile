@@ -1,10 +1,7 @@
-FROM ubuntu:22.04 AS build
-
-# Pin package versions for deterministic builds
-ARG GO_VERSION=1.23.0
-ARG GO_CHECKSUM=905a297f19ead44780548933e0ff1a1b86e8327bb459e92f9c0012569f76f5e3
-
-# Install system dependencies
+# BASE_IMAGE allows overriding the base image so the build can pull from an
+# internal mirror when docker.io is unreachable. Defaults to upstream ubuntu:22.04.
+ARG BASE_IMAGE=ubuntu:22.04
+FROM ${BASE_IMAGE} AS build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         wget \
@@ -83,8 +80,8 @@ RUN COMMIT_HASH=$(git rev-parse HEAD) && \
         -ldflags "-s -w -X github.com/prebid/prebid-server/v3/version.Ver=`git describe --tags | sed 's/^v//'` -X github.com/prebid/prebid-server/v3/version.Rev=`git rev-parse HEAD` -X github.com/prebid/prebid-server/v3/version.BuildSignature=${SIGNATURE} -X github.com/prebid/prebid-server/v3/version.BuildTimestamp=${TIMESTAMP}" \
         -o openads .
 
-FROM ubuntu:22.04 AS release
-LABEL org.opencontainers.image.authors="openads-eng@thetradedesk.com"
+FROM ${BASE_IMAGE} AS release
+LABEL maintainer="hans.hjort@xandr.com" 
 WORKDIR /usr/local/bin/
 
 COPY --from=build /artifacts /artifacts
