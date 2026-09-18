@@ -47,6 +47,14 @@ func processImp(imp *openrtb2.Imp) error {
 		return fmt.Errorf("neither Banner nor Video object specified")
 	}
 	imp.TagID = tlext.InvCode
+
+	// parentId and publisherId are optional; when present forward them on imp.ext
+	if err := setImpExtFields(imp, map[string]*string{
+		"parentId":    tlext.ParentID,
+		"publisherId": tlext.PublisherID,
+	}); err != nil {
+		return err
+	}
 	// floor is optional
 	if tlext.Floor == nil {
 		return nil
@@ -54,6 +62,63 @@ func processImp(imp *openrtb2.Imp) error {
 		imp.BidFloor = *tlext.Floor
 	}
 	// no error
+	return nil
+}
+
+// Normalize imp.BidFloor to USD
+func resolveBidFloorCurrency(imp *openrtb2.Imp, reqInfo *adapters.ExtraRequestInfo) error {
+	if imp.BidFloor <= 0 {
+		return nil
+	}
+	if imp.BidFloorCur != "" && strings.ToUpper(imp.BidFloorCur) != "USD" {
+		converted, err := reqInfo.ConvertCurrency(imp.BidFloor, imp.BidFloorCur, "USD")
+		if err != nil {
+			return &errortypes.BadInput{
+				Message: fmt.Sprintf("Unable to convert bid floor from %s to USD: %s", imp.BidFloorCur, err.Error()),
+			}
+		}
+		imp.BidFloor = converted
+	}
+	imp.BidFloorCur = "USD"
+	return nil
+}
+
+// setImpExtFields writes the supplied optional string fields into imp.ext,
+// preserving all other imp.ext fields. Nil or empty values are skipped.
+func setImpExtFields(imp *openrtb2.Imp, fields map[string]*string) error {
+	pending := make(map[string]string, len(fields))
+	for key, value := range fields {
+		if value != nil && *value != "" {
+			pending[key] = *value
+		}
+	}
+	if len(pending) == 0 {
+		return nil
+	}
+
+	var impExt map[string]json.RawMessage
+	if len(imp.Ext) > 0 {
+		if err := jsonutil.Unmarshal(imp.Ext, &impExt); err != nil {
+			return err
+		}
+	}
+	if impExt == nil {
+		impExt = make(map[string]json.RawMessage, len(pending))
+	}
+
+	for key, value := range pending {
+		encoded, err := jsonutil.Marshal(value)
+		if err != nil {
+			return err
+		}
+		impExt[key] = encoded
+	}
+
+	ext, err := jsonutil.Marshal(impExt)
+	if err != nil {
+		return err
+	}
+	imp.Ext = ext
 	return nil
 }
 
