@@ -91,9 +91,9 @@ func VAST(bids []BidInput, me metrics.MetricsEngine) Result {
 				continue
 			}
 
-			if child.SelectElement("Advertiser") == nil || child.SelectElement("Pricing") == nil || child.SelectElement("Category") == nil {
+			if child.SelectElement("Pricing") == nil {
 				me.RecordCollatedVastMissingMetadata(p.input.AdapterName)
-				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> missing required Advertiser, Pricing, or Category metadata, discarding", p.input.BidID, p.input.ImpID))
+				errs = append(errs, fmt.Errorf("bid %q (imp %q): <Ad> missing required Pricing metadata, discarding", p.input.BidID, p.input.ImpID))
 				continue
 			}
 
