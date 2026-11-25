@@ -69,7 +69,7 @@ func TestVAST_SingleBidWithMetadata(t *testing.T) {
 	assert.Empty(t, me.missingMetadata)
 }
 
-func TestVAST_SingleBidMissingAdvertiser(t *testing.T) {
+func TestVAST_SingleBidMissingAdvertiserAllowed(t *testing.T) {
 	bids := []BidInput{
 		{
 			BidID: "bid-1", ImpID: "imp-1", AdapterName: "dsp-a",
@@ -83,10 +83,9 @@ func TestVAST_SingleBidMissingAdvertiser(t *testing.T) {
 	me := newCollateMetricsMock()
 	result := VAST(bids, me)
 
-	assert.Empty(t, result.VastXML)
-	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0].Error(), "missing required Advertiser, Pricing, or Category")
-	assert.Equal(t, 1, me.missingMetadata["dsp-a"])
+	assert.Empty(t, result.Errors)
+	assert.Contains(t, result.VastXML, `<Pricing model="CPM" currency="USD">5.00</Pricing>`)
+	assert.Empty(t, me.missingMetadata)
 }
 
 func TestVAST_SingleBidMissingPricing(t *testing.T) {
@@ -105,11 +104,11 @@ func TestVAST_SingleBidMissingPricing(t *testing.T) {
 
 	assert.Empty(t, result.VastXML)
 	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0].Error(), "missing required Advertiser, Pricing, or Category")
+	assert.Contains(t, result.Errors[0].Error(), "missing required Pricing")
 	assert.Equal(t, 1, me.missingMetadata["dsp-b"])
 }
 
-func TestVAST_SingleBidMissingCategory(t *testing.T) {
+func TestVAST_SingleBidMissingCategoryAllowed(t *testing.T) {
 	bids := []BidInput{
 		{
 			BidID: "bid-1", ImpID: "imp-1", AdapterName: "dsp-c",
@@ -124,10 +123,9 @@ func TestVAST_SingleBidMissingCategory(t *testing.T) {
 	me := newCollateMetricsMock()
 	result := VAST(bids, me)
 
-	assert.Empty(t, result.VastXML)
-	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0].Error(), "missing required Advertiser, Pricing, or Category")
-	assert.Equal(t, 1, me.missingMetadata["dsp-c"])
+	assert.Empty(t, result.Errors)
+	assert.Contains(t, result.VastXML, `<Pricing model="CPM" currency="USD">5.00</Pricing>`)
+	assert.Empty(t, me.missingMetadata)
 }
 
 func TestVAST_MultipleBidsSameVersion(t *testing.T) {
@@ -196,7 +194,7 @@ func TestVAST_VersionMismatch(t *testing.T) {
 
 func TestVAST_NURLOnlyPassedViaMakeVAST(t *testing.T) {
 	// NURL-only bids are wrapped by makeVAST at the call site, so VAST
-	// receives them as AdM. The generated wrapper lacks Advertiser/Pricing/Category → discarded.
+	// receives them as AdM. The generated wrapper lacks Pricing → discarded.
 	wrappedNURL := `<VAST version="3.0"><Ad><Wrapper>` +
 		`<AdSystem>prebid.org wrapper</AdSystem>` +
 		`<VASTAdTagURI><![CDATA[https://example.com/vast-redirect?id=123]]></VASTAdTagURI>` +
@@ -215,7 +213,7 @@ func TestVAST_NURLOnlyPassedViaMakeVAST(t *testing.T) {
 
 	assert.Empty(t, result.VastXML)
 	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0].Error(), "missing required Advertiser, Pricing, or Category")
+	assert.Contains(t, result.Errors[0].Error(), "missing required Pricing")
 	assert.Equal(t, 1, me.missingMetadata["nurl-seat"])
 }
 
@@ -324,7 +322,7 @@ func TestVAST_MultipleAdsInOneBid_MixedMetadata(t *testing.T) {
 	result := VAST(bids, me)
 
 	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0].Error(), "missing required Advertiser, Pricing, or Category")
+	assert.Contains(t, result.Errors[0].Error(), "missing required Pricing")
 	assert.Equal(t, 1, me.missingMetadata["multi-seat"])
 
 	assert.Contains(t, result.VastXML, `<Ad id="m1">`)
